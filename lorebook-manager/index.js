@@ -102,6 +102,13 @@
       '.wbm-preset-meta { margin-top: 2px; color: var(--wbm-faint); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
       '.wbm-preset-actions { display: flex; gap: 3px; }',
       '.wbm-preset-actions .wbm-icon-btn { width: 28px; height: 28px; font-size: 11px; }',
+      '.wbm-preset-handle { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 28px; flex: 0 0 auto; color: var(--wbm-faint); cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; }',
+      '.wbm-preset-handle:hover { color: var(--wbm-text); }',
+      '.wbm-preset-handle:active { cursor: grabbing; }',
+      '.wbm-preset-name { cursor: text; }',
+      '.wbm-preset-item.is-dragging { opacity: 0.55; border-color: rgba(124, 108, 255, 0.7); background: rgba(124, 108, 255, 0.1); }',
+      '.wbm-preset-name.is-renaming { display: none; }',
+      '.wbm-preset-name-input { font-size: 13px; font-weight: 600; padding: 4px 7px; }',
       '.wbm-empty { display: flex; align-items: center; justify-content: center; min-height: 72px; padding: 16px; color: var(--wbm-faint); font-size: 12px; border: 1px dashed var(--wbm-line); border-radius: 10px; margin-top: 9px; }',
       '.wbm-footer { display: flex; align-items: center; gap: 10px; padding: 7px 14px; border-top: 1px solid var(--wbm-line); color: var(--wbm-faint); font-size: 11.5px; flex: 0 0 auto; }',
       '.wbm-footer .wbm-footer-right { margin-left: auto; }',
@@ -1291,6 +1298,9 @@
       }, 150),
     );
 
+    setupPresetListInteractions($overlay.find('#wbm_worldbook_preset_list'), 'worldbookPresets');
+    setupPresetListInteractions($overlay.find('#wbm_binding_preset_list'), 'bindingPresets');
+
     $overlay.find('.wbm-header-actions').on('pointerdown', event => event.stopPropagation());
     $overlay.find('#wbm_close').on('click', closeManager);
     $overlay.find('#wbm_refresh').on('click', async () => {
@@ -1341,9 +1351,10 @@
       ? worldbookPresets
           .map(
             preset => `
-              <div class="wbm-preset-item" data-worldbook-preset="${escapeHtml(preset.id)}">
+              <div class="wbm-preset-item" data-worldbook-preset="${escapeHtml(preset.id)}" data-preset-id="${escapeHtml(preset.id)}">
+                <span class="wbm-preset-handle" title="按住拖动排序"><i class="fa-solid fa-grip-vertical"></i></span>
                 <div class="wbm-preset-main">
-                  <div class="wbm-preset-name">${escapeHtml(preset.name)}</div>
+                  <div class="wbm-preset-name" data-preset-name title="双击重命名">${escapeHtml(preset.name)}</div>
                   <div class="wbm-preset-meta">${escapeHtml(describeWorldbookPreset(preset))}</div>
                 </div>
                 <div class="wbm-preset-actions">
@@ -1361,9 +1372,10 @@
       ? bindingPresets
           .map(
             preset => `
-              <div class="wbm-preset-item" data-binding-preset="${escapeHtml(preset.id)}">
+              <div class="wbm-preset-item" data-binding-preset="${escapeHtml(preset.id)}" data-preset-id="${escapeHtml(preset.id)}">
+                <span class="wbm-preset-handle" title="按住拖动排序"><i class="fa-solid fa-grip-vertical"></i></span>
                 <div class="wbm-preset-main">
-                  <div class="wbm-preset-name">${escapeHtml(preset.name)}</div>
+                  <div class="wbm-preset-name" data-preset-name title="双击重命名">${escapeHtml(preset.name)}</div>
                   <div class="wbm-preset-meta">${escapeHtml(describeBindingPreset(preset))}</div>
                 </div>
                 <div class="wbm-preset-actions">
@@ -1401,6 +1413,124 @@
         else if (action === 'copy') duplicateBindingPreset(id);
         else if (action === 'delete') deleteBindingPreset(id);
       });
+  }
+
+  function findPreset(collectionKey, presetId) {
+    return (state.preferences[collectionKey] || []).find(item => item.id === presetId) || null;
+  }
+
+  /** 按列表当前 DOM 顺序重排预设数组并保存。 */
+  function persistPresetOrder($list, collectionKey) {
+    const ids = $list
+      .children('.wbm-preset-item')
+      .map(function () {
+        return $(this).attr('data-preset-id');
+      })
+      .get();
+    const current = state.preferences[collectionKey] || [];
+    const map = new Map(current.map(item => [item.id, item]));
+    const ordered = [];
+    for (const id of ids) {
+      const item = map.get(id);
+      if (item) {
+        ordered.push(item);
+        map.delete(id);
+      }
+    }
+    for (const item of map.values()) ordered.push(item);
+    state.preferences[collectionKey] = ordered;
+    savePreferences();
+  }
+
+  /** 就地重命名：把预设名替换为输入框，回车/失焦保存，Esc 取消。 */
+  function startInlineRename($nameEl, collectionKey, presetId) {
+    if ($nameEl.data('renaming')) return;
+    const preset = findPreset(collectionKey, presetId);
+    if (!preset) return;
+    const original = text(preset.name);
+    const $input = $('<input type="text" class="wbm-input wbm-preset-name-input" />').val(original);
+    $nameEl.data('renaming', true).addClass('is-renaming').after($input);
+    let settled = false;
+    const finish = commit => {
+      if (settled) return;
+      settled = true;
+      const next = text($input.val()).trim();
+      $input.remove();
+      $nameEl.removeClass('is-renaming').removeData('renaming');
+      if (commit && next && next !== original) {
+        preset.name = next;
+        savePreferences();
+        notify(`已重命名为：${next}`, 'success');
+        renderPresets();
+      }
+    };
+    $input.on('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        finish(true);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        finish(false);
+      }
+    });
+    $input.on('blur', () => finish(true));
+    setTimeout(() => {
+      $input.trigger('focus');
+      $input.trigger('select');
+    }, 20);
+  }
+
+  /** 绑定双击重命名与手柄拖动排序；列表容器是静态的，事件用委托即可跨重渲染生效。 */
+  function setupPresetListInteractions($list, collectionKey) {
+    $list.on('dblclick', '.wbm-preset-name', function () {
+      const $item = $(this).closest('.wbm-preset-item');
+      startInlineRename($(this), collectionKey, $item.attr('data-preset-id'));
+    });
+
+    $list.on('pointerdown', '.wbm-preset-handle', function (event) {
+      const native = event.originalEvent || event;
+      if (!native.isPrimary || native.button !== 0) return;
+      native.preventDefault();
+      const pointerId = native.pointerId;
+      const $item = $(this).closest('.wbm-preset-item');
+      const itemEl = $item.get(0);
+      const startY = native.clientY;
+      let dragging = false;
+
+      const onMove = move => {
+        if (move.pointerId !== pointerId) return;
+        if (!dragging) {
+          if (Math.abs(move.clientY - startY) < 5) return;
+          dragging = true;
+          $item.addClass('is-dragging');
+        }
+        move.preventDefault();
+        const siblings = $list.children('.wbm-preset-item').toArray();
+        let $before = null;
+        for (const el of siblings) {
+          if (el === itemEl) continue;
+          const rect = el.getBoundingClientRect();
+          if (move.clientY < rect.top + rect.height / 2) {
+            $before = $(el);
+            break;
+          }
+        }
+        if ($before) $item.insertBefore($before);
+        else $list.append($item);
+      };
+      const onEnd = endEvent => {
+        if (endEvent && endEvent.pointerId !== undefined && endEvent.pointerId !== pointerId) return;
+        UI_DOCUMENT.removeEventListener('pointermove', onMove);
+        UI_DOCUMENT.removeEventListener('pointerup', onEnd);
+        UI_DOCUMENT.removeEventListener('pointercancel', onEnd);
+        if (!dragging) return;
+        $item.removeClass('is-dragging');
+        persistPresetOrder($list, collectionKey);
+      };
+      UI_DOCUMENT.addEventListener('pointermove', onMove);
+      UI_DOCUMENT.addEventListener('pointerup', onEnd);
+      UI_DOCUMENT.addEventListener('pointercancel', onEnd);
+    });
   }
 
   function updateFooterStatus() {
