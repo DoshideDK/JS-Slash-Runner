@@ -111,10 +111,6 @@
       '.wbm-dialog-head h3 { flex: 1; margin: 0; font-size: 15px; }',
       '.wbm-dialog-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 14px 15px 16px; }',
       '.wbm-dialog-foot { display: flex; align-items: center; justify-content: flex-end; gap: 7px; padding: 11px 15px; border-top: 1px solid var(--wbm-line); }',
-      '#wbm_fab { position: fixed; right: 18px; bottom: 84px; z-index: 2147481900; display: none; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 14px; color: #fff; background: linear-gradient(135deg, var(--wbm-accent), var(--wbm-accent-2)); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.42); cursor: pointer; transition: transform 0.12s ease, filter 0.12s ease; }',
-      '#wbm_fab.wbm-fab-visible { display: inline-flex; }',
-      '#wbm_fab:hover { transform: translateY(-2px); filter: brightness(1.08); }',
-      '#wbm_fab i { font-size: 18px; }',
       '.wbm-menu-item { cursor: pointer; }',
       '@media (max-width: 680px) {',
       '  .wbm-header { padding: 10px 11px; }',
@@ -167,9 +163,9 @@
       if (typeof window.replaceScriptInfo === 'function') {
         window.replaceScriptInfo(
           [
-            '版本: 1.3.0',
+            '版本: 1.4.0',
             '类型: 酒馆助手脚本',
-            '入口: 点击“' + buttonName + '”或主页面右下角悬浮按钮。',
+            '入口: 点击“' + buttonName + '”。',
             '功能: 全局世界书预设、角色 / 聊天绑定预设。',
           ].join('\n'),
         );
@@ -182,7 +178,7 @@
   }
 
   const WBM = {
-    version: '1.3.0',
+    version: '1.4.0',
     name: '世界书管理器',
     /** 旧版本地存储键，仅作迁移与本机回退使用 */
     storageKey: 'wbm.settings.v1',
@@ -325,7 +321,6 @@
       worldbookPresets: [],
       /** 绑定预设：{id,name,global:[],charPrimary,charAdditional:[],chat} */
       bindingPresets: [],
-      showFab: true,
     };
   }
 
@@ -337,7 +332,7 @@
   // ---------------------------------------------------------------------------
 
   /** 用于区分「从未写入」与「被清空」的偏好字段。 */
-  const PREF_STORAGE_KEYS = ['worldbookPresets', 'bindingPresets', 'showFab'];
+  const PREF_STORAGE_KEYS = ['worldbookPresets', 'bindingPresets'];
 
   /** 解析酒馆助手注入的 API：脚本作用域里的全局函数优先，其次 TavernHelper 对象。 */
   function tavernApi(name) {
@@ -1431,24 +1426,8 @@
   }
 
   // ---------------------------------------------------------------------------
-  // 扩展入口 / 菜单 / 设置 / 悬浮按钮
+  // 扩展入口 / 菜单 / 设置
   // ---------------------------------------------------------------------------
-
-  function applyFabVisibility() {
-    const $fab = $('#wbm_fab');
-    if (!$fab.length) return;
-    $fab.toggleClass('wbm-fab-visible', state.preferences.showFab !== false);
-  }
-
-  function createFabButton() {
-    if ($('#wbm_fab').length) return;
-    const $fab = $(`
-      <button type="button" id="wbm_fab" title="世界书管理器 (Alt+W)">
-        <i class="fa-solid fa-book-atlas"></i>
-      </button>`).appendTo(UI_DOCUMENT.body);
-    $fab.on('click', () => showManager());
-    applyFabVisibility();
-  }
 
   function createMenuEntry() {
     if ($('#wbm_menu_item').length) return true;
@@ -1483,29 +1462,16 @@
             </div>
             <div class="flex-container flexGap5" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <div id="wbm_settings_open" class="menu_button">世界书管理设置</div>
-              <label class="checkbox_label" style="display:inline-flex;align-items:center;gap:6px">
-                <input type="checkbox" id="wbm_settings_fab_toggle" />
-                <span>显示悬浮按钮</span>
-              </label>
             </div>
           </div>
         </div>
       </div>`);
 
     $('#wbm_settings_open').on('click', showManager);
-    $('#wbm_settings_fab_toggle')
-      .prop('checked', state.preferences.showFab !== false)
-      .on('change', function () {
-        state.preferences.showFab = $(this).prop('checked');
-        savePreferences();
-        applyFabVisibility();
-      });
     return true;
   }
 
   async function ensureExtensionUi() {
-    createFabButton();
-
     const started = Date.now();
     while (Date.now() - started < 45000) {
       const menuReady = createMenuEntry();
@@ -1513,7 +1479,7 @@
       if (menuReady && settingsReady) return;
       await sleep(300);
     }
-    console.warn('[世界书管理器] 未找到扩展菜单或设置容器，可通过悬浮按钮打开');
+    console.warn('[世界书管理器] 未找到扩展菜单或设置容器，可通过脚本按钮打开');
   }
 
   async function initWorldbookManager() {
