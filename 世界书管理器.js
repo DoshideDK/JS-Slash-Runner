@@ -163,7 +163,7 @@
       if (typeof window.replaceScriptInfo === 'function') {
         window.replaceScriptInfo(
           [
-            '版本: 1.5.0',
+            '版本: 1.6.0',
             '类型: 酒馆助手脚本',
             '入口: 点击“' + buttonName + '”。',
             '功能: 全局世界书预设、角色 / 聊天绑定预设。',
@@ -178,7 +178,7 @@
   }
 
   const WBM = {
-    version: '1.5.0',
+    version: '1.6.0',
     name: '世界书管理器',
     /** 旧版本地存储键，仅作迁移与本机回退使用 */
     storageKey: 'wbm.settings.v1',
@@ -1525,12 +1525,6 @@
       console.warn('[世界书管理器] 未检测到 window.TavernHelper；请确认酒馆助手已启用');
     }
 
-    $(UI_DOCUMENT).on('keydown.wbm_shortcut', event => {
-      if (event.altKey && !event.ctrlKey && !event.metaKey && text(event.key).toLowerCase() === 'w') {
-        event.preventDefault();
-        toggleManager();
-      }
-    });
   }
 
   // 暴露一些调试接口
