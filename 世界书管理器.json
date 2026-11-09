@@ -3,8 +3,8 @@
   "enabled": false,
   "name": "世界书管理器",
   "id": "2021ce04-12b1-4b55-b0e0-46e658933b88",
-  "content": "import 'https://testingcf.jsdelivr.net/gh/DoshideDK/JS-Slash-Runner@main/世界书管理器.js';\n",
-  "info": "版本: 1.0.0\n类型: 酒馆助手脚本\n入口: 脚本按钮“打开世界书管理器”或主页面右下角悬浮按钮。\n功能: 全局世界书预设、角色 / 聊天绑定预设。\n源码: https://testingcf.jsdelivr.net/gh/DoshideDK/JS-Slash-Runner@main/世界书管理器.js\n说明: 正文仅为 import，实际代码从上面的 CDN 拉取；预设保存在酒馆助手脚本变量（随脚本/世界书保存），同一个 URL 的设备共享。",
+  "content": "(async () => {\n  const owner = 'DoshideDK';\n  const repo = 'JS-Slash-Runner';\n  const pluginPath = '%E4%B8%96%E7%95%8C%E4%B9%A6%E7%AE%A1%E7%90%86%E5%99%A8.js';\n\n  const probeUrl = `https://cdn.jsdelivr.net/gh/${owner}/${repo}@latest/${pluginPath}?t=${Date.now()}`;\n  const probe = await fetch(probeUrl, {\n    method: 'HEAD',\n    cache: 'no-store',\n  });\n\n  if (!probe.ok) {\n    throw new Error(`[世界书管理器] 探测最新版本失败: ${probe.status}`);\n  }\n\n  const version = probe.headers.get('x-jsd-version');\n  if (!version) {\n    throw new Error('[世界书管理器] 响应头里没有 x-jsd-version');\n  }\n\n  console.log('[世界书管理器] loader tag:', version);\n\n  await import(`https://cdn.jsdelivr.net/gh/${owner}/${repo}@${version}/${pluginPath}`);\n})();\n",
+  "info": "版本: 1.1.0\n类型: 酒馆助手脚本\n功能: 世界书预设管理。\n说明: 正文仅负责加载最新版本，实际代码从 CDN 拉取。",
   "button": {
     "enabled": true,
     "buttons": [
