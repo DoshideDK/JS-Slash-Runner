@@ -156,7 +156,7 @@
    */
   function registerScriptButton(openFn) {
     if (!IS_SCRIPT_IFRAME) return false;
-    const buttonName = '打开世界书管理器';
+    const buttonName = '世界书管理设置';
     try {
       if (typeof window.appendInexistentScriptButtons === 'function') {
         window.appendInexistentScriptButtons([{ name: buttonName, visible: true }]);
@@ -167,7 +167,7 @@
       if (typeof window.replaceScriptInfo === 'function') {
         window.replaceScriptInfo(
           [
-            '版本: 1.2.0',
+            '版本: 1.3.0',
             '类型: 酒馆助手脚本',
             '入口: 点击“' + buttonName + '”或主页面右下角悬浮按钮。',
             '功能: 全局世界书预设、角色 / 聊天绑定预设。',
@@ -182,7 +182,7 @@
   }
 
   const WBM = {
-    version: '1.2.0',
+    version: '1.3.0',
     name: '世界书管理器',
     /** 旧版本地存储键，仅作迁移与本机回退使用 */
     storageKey: 'wbm.settings.v1',
@@ -1093,6 +1093,27 @@
   const WINDOW_GAP = 12;
   const WINDOW_MIN_WIDTH = 320;
   const WINDOW_MIN_HEIGHT = 280;
+  const WINDOW_STATE_KEY = 'wbm.window.v1';
+
+  function loadSavedWindowRect() {
+    const saved = safeJsonParse(UI_WINDOW.localStorage.getItem(WINDOW_STATE_KEY));
+    if (!saved || typeof saved !== 'object') return null;
+    const rect = {
+      x: Number(saved.x),
+      y: Number(saved.y),
+      width: Number(saved.width),
+      height: Number(saved.height),
+    };
+    return [rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) ? rect : null;
+  }
+
+  function saveWindowRect(rect) {
+    try {
+      UI_WINDOW.localStorage.setItem(WINDOW_STATE_KEY, JSON.stringify(rect));
+    } catch (error) {
+      // ignore
+    }
+  }
 
   function getViewportSize() {
     return {
@@ -1183,6 +1204,7 @@
         if (handle && handle.hasPointerCapture && handle.hasPointerCapture(pointerId)) {
           handle.releasePointerCapture(pointerId);
         }
+        saveWindowRect(readWindowRect($window));
       };
       UI_DOCUMENT.addEventListener('pointermove', onMove);
       UI_DOCUMENT.addEventListener('pointerup', onEnd);
@@ -1253,12 +1275,14 @@
     state.$overlay = $overlay;
     state.domReady = true;
 
-    applyWindowRect($overlay, defaultWindowRect());
+    applyWindowRect($overlay, loadSavedWindowRect() || defaultWindowRect());
     enableWindowDrag($overlay);
     $(UI_WINDOW).on(
       'resize.wbm_window',
       debounce(() => {
-        if (state.$overlay && state.opened) applyWindowRect(state.$overlay, readWindowRect(state.$overlay));
+        if (!state.$overlay || !state.opened) return;
+        applyWindowRect(state.$overlay, readWindowRect(state.$overlay));
+        saveWindowRect(readWindowRect(state.$overlay));
       }, 150),
     );
 
@@ -1458,7 +1482,7 @@
               全局世界书预设、角色 / 聊天绑定预设。需要先启用酒馆助手 (JS-Slash-Runner)。
             </div>
             <div class="flex-container flexGap5" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <div id="wbm_settings_open" class="menu_button">打开世界书管理器</div>
+              <div id="wbm_settings_open" class="menu_button">世界书管理设置</div>
               <label class="checkbox_label" style="display:inline-flex;align-items:center;gap:6px">
                 <input type="checkbox" id="wbm_settings_fab_toggle" />
                 <span>显示悬浮按钮</span>
