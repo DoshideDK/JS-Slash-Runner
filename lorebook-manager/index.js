@@ -163,7 +163,7 @@
       if (typeof window.replaceScriptInfo === 'function') {
         window.replaceScriptInfo(
           [
-            '版本: 1.6.0',
+            '版本: 1.6.1',
             '类型: 酒馆助手脚本',
             '入口: 点击“' + buttonName + '”。',
             '功能: 全局世界书预设、角色 / 聊天绑定预设。',
@@ -178,7 +178,7 @@
   }
 
   const WBM = {
-    version: '1.6.0',
+    version: '1.6.1',
     name: '世界书管理器',
     /** 旧版本地存储键，仅作迁移与本机回退使用 */
     storageKey: 'wbm.settings.v1',
@@ -697,8 +697,14 @@
     return result;
   }
 
-  function openWorldbookPresetDialog(existingPreset = null) {
+  async function openWorldbookPresetDialog(existingPreset = null) {
     const isUpdate = !!existingPreset;
+    // 窗口是浮动的，用户可能在后面直接改了全局世界书；保存前重新读一次当前状态。
+    try {
+      await refreshWorldbookNames();
+    } catch (error) {
+      console.warn('[世界书管理器] 刷新世界书列表失败', error);
+    }
     const currentGlobal = Array.from(state.globalNames).filter(name => state.names.includes(name));
     const recordKey = uniqueId('wbp_record');
     const nameKey = uniqueId('wbp_name');
@@ -860,7 +866,11 @@
       okText: '保存',
     });
     if (!name) return;
-    refreshBindings();
+    try {
+      await refreshWorldbookNames();
+    } catch (error) {
+      console.warn('[世界书管理器] 刷新世界书列表失败', error);
+    }
     const preset = {
       id: uniqueId('bind'),
       name,
