@@ -19,35 +19,37 @@
       '  --wbm-danger: #ff647c;',
       '  --wbm-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);',
       '}',
-      'body.wbm-opened { overflow: hidden !important; }',
+      '/* 浮动窗口，不锁定背景滚动 */',
       '#wbm_overlay, #wbm_overlay * { box-sizing: border-box; }',
       '#wbm_overlay {',
-      '  position: fixed; inset: 0; z-index: 2147482000; display: none;',
+      '  position: fixed; z-index: 2147482000; display: none;',
+      '  grid-template-rows: auto minmax(0, 1fr) auto;',
       '  color: var(--wbm-text); font-size: 14px; line-height: 1.5;',
       '  font-family: var(--mainFontFamily, "Noto Sans SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif);',
-      '}',
-      '#wbm_overlay.wbm-visible { display: block; }',
-      '.wbm-overlay-mask {',
-      '  position: absolute; inset: 0; backdrop-filter: blur(8px);',
-      '  background: radial-gradient(circle at 18% 12%, rgba(124, 108, 255, 0.16), transparent 42%),',
-      '              radial-gradient(circle at 82% 86%, rgba(61, 214, 198, 0.11), transparent 40%),',
-      '              rgba(5, 6, 10, 0.72);',
-      '}',
-      '.wbm-panel {',
-      '  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);',
-      '  display: flex; flex-direction: column;',
-      '  width: min(860px, calc(100vw - 28px)); height: min(820px, calc(100vh - 28px));',
       '  background: linear-gradient(150deg, rgba(30, 33, 47, 0.99), rgba(17, 19, 28, 0.99));',
-      '  border: 1px solid var(--wbm-line-strong); border-radius: 20px;',
+      '  border: 1px solid var(--wbm-line-strong); border-radius: 14px;',
       '  box-shadow: var(--wbm-shadow); overflow: hidden;',
       '}',
-      '.wbm-panel::before {',
+      '#wbm_overlay.wbm-visible { display: grid; }',
+      '#wbm_overlay::before {',
       '  content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; pointer-events: none;',
       '  background: linear-gradient(90deg, var(--wbm-accent), var(--wbm-accent-2), #67aaff);',
       '}',
       '.wbm-header {',
-      '  display: flex; align-items: center; gap: 16px; padding: 15px 18px 13px;',
+      '  display: flex; align-items: center; gap: 16px; padding: 13px 16px 12px;',
       '  border-bottom: 1px solid var(--wbm-line); background: rgba(255, 255, 255, 0.018); flex: 0 0 auto;',
+      '  cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none;',
+      '}',
+      '.wbm-header:active { cursor: grabbing; }',
+      '.wbm-header-actions { cursor: default; }',
+      '.wbm-resize {',
+      '  position: absolute; z-index: 50; right: 0; bottom: 0; width: 22px; height: 22px;',
+      '  cursor: nwse-resize; touch-action: none; -webkit-user-select: none; user-select: none;',
+      '  -webkit-tap-highlight-color: transparent;',
+      '}',
+      '.wbm-resize::after {',
+      '  content: ""; position: absolute; right: 4px; bottom: 4px; width: 8px; height: 8px;',
+      '  border-right: 2px solid var(--wbm-faint); border-bottom: 2px solid var(--wbm-faint); opacity: 0.85;',
       '}',
       '.wbm-brand { display: flex; align-items: center; gap: 11px; min-width: 0; }',
       '.wbm-brand-icon {',
@@ -115,7 +117,6 @@
       '#wbm_fab i { font-size: 18px; }',
       '.wbm-menu-item { cursor: pointer; }',
       '@media (max-width: 680px) {',
-      '  .wbm-panel { width: 100vw; height: 100dvh; max-width: none; max-height: none; border-radius: 0; border-left: 0; border-right: 0; }',
       '  .wbm-header { padding: 10px 11px; }',
       '  .wbm-brand p { display: none; }',
       '  .wbm-input, .wbm-textarea { font-size: 16px; }',
@@ -166,7 +167,7 @@
       if (typeof window.replaceScriptInfo === 'function') {
         window.replaceScriptInfo(
           [
-            '版本: 1.1.0',
+            '版本: 1.2.0',
             '类型: 酒馆助手脚本',
             '入口: 点击“' + buttonName + '”或主页面右下角悬浮按钮。',
             '功能: 全局世界书预设、角色 / 聊天绑定预设。',
@@ -181,7 +182,7 @@
   }
 
   const WBM = {
-    version: '1.1.0',
+    version: '1.2.0',
     name: '世界书管理器',
     /** 旧版本地存储键，仅作迁移与本机回退使用 */
     storageKey: 'wbm.settings.v1',
@@ -1086,6 +1087,114 @@
   }
 
   // ---------------------------------------------------------------------------
+  // 浮动窗口：拖动 / 缩放
+  // ---------------------------------------------------------------------------
+
+  const WINDOW_GAP = 12;
+  const WINDOW_MIN_WIDTH = 320;
+  const WINDOW_MIN_HEIGHT = 280;
+
+  function getViewportSize() {
+    return {
+      width: UI_WINDOW.innerWidth || 1024,
+      height: UI_WINDOW.innerHeight || 768,
+    };
+  }
+
+  function clampWindowRect(rect) {
+    const viewport = getViewportSize();
+    const maxWidth = Math.max(1, viewport.width - WINDOW_GAP * 2);
+    const maxHeight = Math.max(1, viewport.height - WINDOW_GAP * 2);
+    const minWidth = Math.min(WINDOW_MIN_WIDTH, maxWidth);
+    const minHeight = Math.min(WINDOW_MIN_HEIGHT, maxHeight);
+    const width = Math.min(Math.max(rect.width, minWidth), maxWidth);
+    const height = Math.min(Math.max(rect.height, minHeight), maxHeight);
+    const maxX = Math.max(WINDOW_GAP, viewport.width - WINDOW_GAP - width);
+    const maxY = Math.max(WINDOW_GAP, viewport.height - WINDOW_GAP - height);
+    return {
+      x: Math.min(Math.max(rect.x, WINDOW_GAP), maxX),
+      y: Math.min(Math.max(rect.y, WINDOW_GAP), maxY),
+      width,
+      height,
+    };
+  }
+
+  function defaultWindowRect() {
+    const viewport = getViewportSize();
+    const mobile = viewport.width <= 720;
+    const maxWidth = Math.max(1, viewport.width - WINDOW_GAP * 2);
+    const maxHeight = Math.max(1, viewport.height - WINDOW_GAP * 2);
+    const width = mobile ? maxWidth : Math.min(720, maxWidth);
+    const height = mobile ? Math.min(620, maxHeight) : Math.min(maxHeight, Math.max(520, Math.round(viewport.height * 0.82)));
+    const x = mobile ? WINDOW_GAP : Math.max(WINDOW_GAP, viewport.width - width - 28);
+    const y = mobile ? WINDOW_GAP : Math.max(WINDOW_GAP, Math.round((viewport.height - height) / 2));
+    return clampWindowRect({ x, y, width, height });
+  }
+
+  function readWindowRect($window) {
+    return {
+      width: $window.outerWidth() || 420,
+      height: $window.outerHeight() || 560,
+      x: Number.parseFloat($window.css('left')) || WINDOW_GAP,
+      y: Number.parseFloat($window.css('top')) || WINDOW_GAP,
+    };
+  }
+
+  function applyWindowRect($window, rect) {
+    const next = clampWindowRect(rect);
+    $window.css({
+      left: `${next.x}px`,
+      top: `${next.y}px`,
+      width: `${next.width}px`,
+      height: `${next.height}px`,
+    });
+  }
+
+  function enableWindowDrag($window) {
+    const $titlebar = $window.find('.wbm-header');
+    const $resize = $window.find('.wbm-resize');
+
+    const begin = (event, mode) => {
+      const native = event.originalEvent || event;
+      if (!native.isPrimary || native.button !== 0) return;
+      native.preventDefault();
+      const pointerId = native.pointerId;
+      const handle = mode === 'resize' ? $resize.get(0) : $titlebar.get(0);
+      const startRect = readWindowRect($window);
+      const startX = native.clientX;
+      const startY = native.clientY;
+
+      const onMove = move => {
+        if (move.pointerId !== pointerId) return;
+        move.preventDefault();
+        const dx = move.clientX - startX;
+        const dy = move.clientY - startY;
+        applyWindowRect(
+          $window,
+          mode === 'resize'
+            ? { ...startRect, width: startRect.width + dx, height: startRect.height + dy }
+            : { ...startRect, x: startRect.x + dx, y: startRect.y + dy },
+        );
+      };
+      const onEnd = () => {
+        UI_DOCUMENT.removeEventListener('pointermove', onMove);
+        UI_DOCUMENT.removeEventListener('pointerup', onEnd);
+        UI_DOCUMENT.removeEventListener('pointercancel', onEnd);
+        if (handle && handle.hasPointerCapture && handle.hasPointerCapture(pointerId)) {
+          handle.releasePointerCapture(pointerId);
+        }
+      };
+      UI_DOCUMENT.addEventListener('pointermove', onMove);
+      UI_DOCUMENT.addEventListener('pointerup', onEnd);
+      UI_DOCUMENT.addEventListener('pointercancel', onEnd);
+      if (handle && handle.setPointerCapture) handle.setPointerCapture(pointerId);
+    };
+
+    $titlebar.on('pointerdown', event => begin(event, 'move'));
+    $resize.on('pointerdown', event => begin(event, 'resize'));
+  }
+
+  // ---------------------------------------------------------------------------
   // UI：静态 DOM 与全局事件
   // ---------------------------------------------------------------------------
 
@@ -1093,25 +1202,23 @@
     if (state.domReady) return;
 
     const html = `
-      <div class="wbm-overlay-mask"></div>
-      <div class="wbm-panel">
-        <header class="wbm-header">
-          <div class="wbm-brand">
-            <div class="wbm-brand-icon"><i class="fa-solid fa-book-atlas"></i></div>
-            <div>
-              <h2>世界书管理器</h2>
-              <p id="wbm_stats">正在加载酒馆助手……</p>
-            </div>
+      <header class="wbm-header">
+        <div class="wbm-brand">
+          <div class="wbm-brand-icon"><i class="fa-solid fa-book-atlas"></i></div>
+          <div>
+            <h2>世界书管理器</h2>
+            <p id="wbm_stats">正在加载酒馆助手……</p>
           </div>
-          <div class="wbm-header-spacer"></div>
-          <div class="wbm-header-actions">
-            <button type="button" class="wbm-btn" id="wbm_export_presets" title="把全部预设导出为备份文件"><i class="fa-solid fa-file-export"></i><span class="wbm-btn-label"> 导出</span></button>
-            <button type="button" class="wbm-btn" id="wbm_import_presets" title="从备份文件导入预设"><i class="fa-solid fa-file-import"></i><span class="wbm-btn-label"> 导入</span></button>
-            <button type="button" class="wbm-btn" id="wbm_refresh" title="重新读取绑定信息"><i class="fa-solid fa-rotate"></i><span class="wbm-btn-label"> 刷新</span></button>
-            <button type="button" class="wbm-icon-btn" id="wbm_close" title="关闭"><i class="fa-solid fa-xmark"></i></button>
-            <input type="file" id="wbm_import_file" class="wbm-hidden" accept=".json,application/json" />
-          </div>
-        </header>
+        </div>
+        <div class="wbm-header-spacer"></div>
+        <div class="wbm-header-actions">
+          <button type="button" class="wbm-btn" id="wbm_export_presets" title="把全部预设导出为备份文件"><i class="fa-solid fa-file-export"></i><span class="wbm-btn-label"> 导出</span></button>
+          <button type="button" class="wbm-btn" id="wbm_import_presets" title="从备份文件导入预设"><i class="fa-solid fa-file-import"></i><span class="wbm-btn-label"> 导入</span></button>
+          <button type="button" class="wbm-btn" id="wbm_refresh" title="重新读取绑定信息"><i class="fa-solid fa-rotate"></i><span class="wbm-btn-label"> 刷新</span></button>
+          <button type="button" class="wbm-icon-btn" id="wbm_close" title="关闭"><i class="fa-solid fa-xmark"></i></button>
+          <input type="file" id="wbm_import_file" class="wbm-hidden" accept=".json,application/json" />
+        </div>
+      </header>
 
         <div class="wbm-right-panels">
           <section id="wbm_panel_presets">
@@ -1139,12 +1246,23 @@
           <span id="wbm_status">就绪</span>
           <span class="wbm-footer-right">v${WBM.version} · 酒馆助手接口</span>
         </footer>
-      </div>`;
 
-    const $overlay = $('<div id="wbm_overlay" class="wbm-overlay"></div>').html(html).appendTo(UI_DOCUMENT.body);
+      <div class="wbm-resize" title="调整大小"></div>`;
+
+    const $overlay = $('<section id="wbm_overlay"></section>').html(html).appendTo(UI_DOCUMENT.body);
     state.$overlay = $overlay;
     state.domReady = true;
 
+    applyWindowRect($overlay, defaultWindowRect());
+    enableWindowDrag($overlay);
+    $(UI_WINDOW).on(
+      'resize.wbm_window',
+      debounce(() => {
+        if (state.$overlay && state.opened) applyWindowRect(state.$overlay, readWindowRect(state.$overlay));
+      }, 150),
+    );
+
+    $overlay.find('.wbm-header-actions').on('pointerdown', event => event.stopPropagation());
     $overlay.find('#wbm_close').on('click', closeManager);
     $overlay.find('#wbm_refresh').on('click', async () => {
       try {
