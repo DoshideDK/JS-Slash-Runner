@@ -163,7 +163,7 @@
       if (typeof window.replaceScriptInfo === 'function') {
         window.replaceScriptInfo(
           [
-            '版本: 1.4.0',
+            '版本: 1.5.0',
             '类型: 酒馆助手脚本',
             '入口: 点击“' + buttonName + '”。',
             '功能: 全局世界书预设、角色 / 聊天绑定预设。',
@@ -178,7 +178,7 @@
   }
 
   const WBM = {
-    version: '1.4.0',
+    version: '1.5.0',
     name: '世界书管理器',
     /** 旧版本地存储键，仅作迁移与本机回退使用 */
     storageKey: 'wbm.settings.v1',
@@ -1425,6 +1425,12 @@
     $('body').removeClass('wbm-opened');
   }
 
+  /** 开关：已打开则关闭，否则打开。 */
+  function toggleManager() {
+    if (state.opened) closeManager();
+    else showManager();
+  }
+
   // ---------------------------------------------------------------------------
   // 扩展入口 / 菜单 / 设置
   // ---------------------------------------------------------------------------
@@ -1440,7 +1446,7 @@
       </div>`);
     $('#wbm_menu_item').on('click', () => {
       $('#extensionsMenu').fadeOut(150);
-      showManager();
+      toggleManager();
     });
     return true;
   }
@@ -1467,7 +1473,7 @@
         </div>
       </div>`);
 
-    $('#wbm_settings_open').on('click', showManager);
+    $('#wbm_settings_open').on('click', toggleManager);
     return true;
   }
 
@@ -1484,7 +1490,7 @@
 
   async function initWorldbookManager() {
     if (IS_SCRIPT_IFRAME) {
-      registerScriptButton(() => showManager());
+      registerScriptButton(() => toggleManager());
     }
 
     const T = await waitFor(() => UI_WINDOW.TavernHelper || window.TavernHelper, 45000, 200);
@@ -1522,7 +1528,7 @@
     $(UI_DOCUMENT).on('keydown.wbm_shortcut', event => {
       if (event.altKey && !event.ctrlKey && !event.metaKey && text(event.key).toLowerCase() === 'w') {
         event.preventDefault();
-        showManager();
+        toggleManager();
       }
     });
   }
@@ -1530,6 +1536,7 @@
   // 暴露一些调试接口
   WBM.open = showManager;
   WBM.close = closeManager;
+  WBM.toggle = toggleManager;
   WBM.state = state;
 
   if (UI_DOCUMENT.readyState === 'loading') {
