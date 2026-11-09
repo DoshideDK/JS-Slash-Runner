@@ -3,7 +3,7 @@
   "enabled": false,
   "name": "世界书管理器",
   "id": "2021ce04-12b1-4b55-b0e0-46e658933b88",
-  "content": "(async () => {\n  const owner = 'DoshideDK';\n  const repo = 'JS-Slash-Runner';\n  const pluginPath = '%E4%B8%96%E7%95%8C%E4%B9%A6%E7%AE%A1%E7%90%86%E5%99%A8.js';\n\n  const probeUrl = `https://cdn.jsdelivr.net/gh/${owner}/${repo}@latest/${pluginPath}?t=${Date.now()}`;\n  const probe = await fetch(probeUrl, {\n    method: 'HEAD',\n    cache: 'no-store',\n  });\n\n  if (!probe.ok) {\n    throw new Error(`[世界书管理器] 探测最新版本失败: ${probe.status}`);\n  }\n\n  const version = probe.headers.get('x-jsd-version');\n  if (!version) {\n    throw new Error('[世界书管理器] 响应头里没有 x-jsd-version');\n  }\n\n  console.log('[世界书管理器] loader tag:', version);\n\n  await import(`https://cdn.jsdelivr.net/gh/${owner}/${repo}@${version}/${pluginPath}`);\n})();\n",
+  "content": "(async () => {\n  const owner = 'DoshideDK';\n  const repo = 'JS-Slash-Runner';\n  const branch = 'main';\n  const path = encodeURIComponent('世界书管理器.js');\n  const cdn = 'https://cdn.jsdelivr.net/gh';\n  let url = `${cdn}/${owner}/${repo}@${branch}/${path}`;\n\n  try {\n    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits/${branch}`, {\n      cache: 'no-store',\n      headers: { Accept: 'application/vnd.github+json' },\n    });\n    if (res.ok) {\n      const sha = (await res.json())?.sha;\n      if (sha) url = `${cdn}/${owner}/${repo}@${sha}/${path}`;\n    }\n  } catch (error) {\n    console.warn('[世界书管理器] 获取最新提交失败，回退到分支地址', error);\n  }\n\n  await import(url);\n})();\n",
   "info": "版本: 1.2.0\n类型: 酒馆助手脚本\n功能: 世界书预设管理。\n说明: 正文仅负责加载最新版本，实际代码从 CDN 拉取。",
   "button": {
     "enabled": true,
