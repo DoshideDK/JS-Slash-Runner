@@ -166,7 +166,7 @@
       if (typeof window.replaceScriptInfo === 'function') {
         window.replaceScriptInfo(
           [
-            '版本: 1.0.0',
+            '版本: 1.1.0',
             '类型: 酒馆助手脚本',
             '入口: 点击“' + buttonName + '”或主页面右下角悬浮按钮。',
             '功能: 全局世界书预设、角色 / 聊天绑定预设。',
@@ -181,7 +181,7 @@
   }
 
   const WBM = {
-    version: '1.0.0',
+    version: '1.1.0',
     name: '世界书管理器',
     /** 旧版本地存储键，仅作迁移与本机回退使用 */
     storageKey: 'wbm.settings.v1',
@@ -277,6 +277,28 @@
       clearTimeout(timer);
       timer = setTimeout(() => fn.apply(this, args), wait);
     };
+  }
+
+  function makeTimestamp() {
+    const date = new Date();
+    const pad = value => String(value).padStart(2, '0');
+    return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}`;
+  }
+
+  function downloadFile(filename, content, mime = 'application/json') {
+    try {
+      const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+      const url = URL.createObjectURL(blob);
+      const a = UI_DOCUMENT.createElement('a');
+      a.href = url;
+      a.download = filename;
+      UI_DOCUMENT.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 3000);
+    } catch (error) {
+      notify(`下载失败：${formatError(error)}`, 'error');
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -918,6 +940,122 @@
   }
 
   // ---------------------------------------------------------------------------
+  // 预设备份：导出 / 导入
+  // ---------------------------------------------------------------------------
+
+  const PRESET_BACKUP_TYPE = 'worldbook-presets-backup';
+
+  function collectPresetBackup() {
+    return {
+      type: PRESET_BACKUP_TYPE,
+      version: 1,
+      script: WBM.name,
+      exportedAt: new Date().toISOString(),
+      worldbookPresets: clone(state.preferences.worldbookPresets || []),
+      bindingPresets: clone(state.preferences.bindingPresets || []),
+    };
+  }
+
+  function exportPresets() {
+    try {
+      const backup = collectPresetBackup();
+      downloadFile(`世界书预设备份-${makeTimestamp()}.json`, JSON.stringify(backup, null, 2));
+      notify(`已导出：世界书预设 ${backup.worldbookPresets.length} 个、绑定预设 ${backup.bindingPresets.length} 个`, 'success');
+    } catch (error) {
+      notify(formatError(error), 'error');
+    }
+  }
+
+  /** 把导入文件规整成 {worldbookPresets, bindingPresets}，非法时抛错。 */
+  function normalisePresetBackup(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      throw new Error('文件内容不是有效的预设备份');
+    }
+    const ensureId = item => (item && typeof item === 'object' ? { ...item, id: item.id || uniqueId('imported') } : null);
+    const worldbookPresets = (Array.isArray(raw.worldbookPresets) ? raw.worldbookPresets : []).map(ensureId).filter(Boolean);
+    const bindingPresets = (Array.isArray(raw.bindingPresets) ? raw.bindingPresets : []).map(ensureId).filter(Boolean);
+    if (!worldbookPresets.length && !bindingPresets.length) {
+      throw new Error('文件里没有可导入的预设');
+    }
+    return { worldbookPresets, bindingPresets };
+  }
+
+  function mergePresets(current, incoming) {
+    const map = new Map();
+    for (const item of current) {
+      if (item && item.id) map.set(item.id, item);
+    }
+    for (const item of incoming) {
+      if (item && item.id) map.set(item.id, item);
+    }
+    return Array.from(map.values());
+  }
+
+  function askImportMode(summary) {
+    return new Promise(resolve => {
+      let settled = false;
+      const done = value => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+      const dialog = createDialog({
+        title: '导入预设备份',
+        body: `<div style="line-height:1.7;white-space:pre-wrap;word-break:break-word">${escapeHtml(summary)}</div>`,
+        buttons: [
+          { text: '取消', className: 'wbm-btn-ghost', onClick: () => done('cancel') },
+          { text: '合并导入', className: 'wbm-btn', onClick: () => done('merge') },
+          { text: '覆盖导入', className: 'wbm-btn is-primary', onClick: () => done('replace') },
+        ],
+      });
+      dialog.onClose = () => done('cancel');
+    });
+  }
+
+  async function importPresetsFromFile(file) {
+    if (!file) return;
+    let raw;
+    try {
+      raw = JSON.parse(await file.text());
+    } catch (error) {
+      notify('导入失败：文件不是有效的 JSON', 'error');
+      return;
+    }
+    let backup;
+    try {
+      backup = normalisePresetBackup(raw);
+    } catch (error) {
+      notify(formatError(error), 'error');
+      return;
+    }
+
+    const currentWb = state.preferences.worldbookPresets || [];
+    const currentBind = state.preferences.bindingPresets || [];
+    const wbNew = backup.worldbookPresets.filter(item => !currentWb.some(existing => existing.id === item.id)).length;
+    const bindNew = backup.bindingPresets.filter(item => !currentBind.some(existing => existing.id === item.id)).length;
+    const summary =
+      `文件包含：世界书预设 ${backup.worldbookPresets.length} 个、绑定预设 ${backup.bindingPresets.length} 个。\n\n` +
+      `合并导入：保留现有预设，按 id 覆盖同名项（新增 ${wbNew + bindNew} 个）。\n` +
+      `覆盖导入：清空当前预设库，只保留文件内容。`;
+    const mode = await askImportMode(summary);
+    if (mode === 'cancel') return;
+
+    if (mode === 'replace') {
+      state.preferences.worldbookPresets = backup.worldbookPresets;
+      state.preferences.bindingPresets = backup.bindingPresets;
+    } else {
+      state.preferences.worldbookPresets = mergePresets(currentWb, backup.worldbookPresets);
+      state.preferences.bindingPresets = mergePresets(currentBind, backup.bindingPresets);
+    }
+    savePreferences();
+    renderPresets();
+    notify(
+      `导入完成：世界书预设 ${state.preferences.worldbookPresets.length} 个、绑定预设 ${state.preferences.bindingPresets.length} 个`,
+      'success',
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // 绑定操作
   // ---------------------------------------------------------------------------
 
@@ -967,8 +1105,11 @@
           </div>
           <div class="wbm-header-spacer"></div>
           <div class="wbm-header-actions">
+            <button type="button" class="wbm-btn" id="wbm_export_presets" title="把全部预设导出为备份文件"><i class="fa-solid fa-file-export"></i><span class="wbm-btn-label"> 导出</span></button>
+            <button type="button" class="wbm-btn" id="wbm_import_presets" title="从备份文件导入预设"><i class="fa-solid fa-file-import"></i><span class="wbm-btn-label"> 导入</span></button>
             <button type="button" class="wbm-btn" id="wbm_refresh" title="重新读取绑定信息"><i class="fa-solid fa-rotate"></i><span class="wbm-btn-label"> 刷新</span></button>
             <button type="button" class="wbm-icon-btn" id="wbm_close" title="关闭"><i class="fa-solid fa-xmark"></i></button>
+            <input type="file" id="wbm_import_file" class="wbm-hidden" accept=".json,application/json" />
           </div>
         </header>
 
@@ -1016,6 +1157,13 @@
     });
     $overlay.find('#wbm_wbp_save').on('click', saveWorldbookPresetFromCurrent);
     $overlay.find('#wbm_binding_save').on('click', saveBindingPresetFromCurrent);
+    $overlay.find('#wbm_export_presets').on('click', exportPresets);
+    $overlay.find('#wbm_import_presets').on('click', () => $overlay.find('#wbm_import_file').trigger('click'));
+    $overlay.find('#wbm_import_file').on('change', async function () {
+      const file = this.files && this.files[0];
+      this.value = '';
+      await importPresetsFromFile(file);
+    });
   }
 
   // ---------------------------------------------------------------------------
