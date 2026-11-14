@@ -135,7 +135,7 @@
 })();
 
 /* 世界书管理器 for SillyTavern + 酒馆助手 (JS-Slash-Runner)
- * 功能：全局世界书预设、角色 / 聊天绑定预设。
+ * 功能：全局世界书预设。
  * 依赖：window.TavernHelper (酒馆助手)
  */
 (async function () {
@@ -173,7 +173,7 @@
             '版本: 1.6.1',
             '类型: 酒馆助手脚本',
             '入口: 点击“' + buttonName + '”。',
-            '功能: 全局世界书预设、角色 / 聊天绑定预设。',
+            '功能: 全局世界书预设。',
           ].join('\n'),
         );
       }
@@ -326,8 +326,6 @@
     return {
       /** 全局世界书预设：{id,name,global:[],entryStates:{book:{uid:enabled}},recordEntries} */
       worldbookPresets: [],
-      /** 绑定预设：{id,name,global:[],charPrimary,charAdditional:[],chat} */
-      bindingPresets: [],
     };
   }
 
@@ -339,7 +337,7 @@
   // ---------------------------------------------------------------------------
 
   /** 用于区分「从未写入」与「被清空」的偏好字段。 */
-  const PREF_STORAGE_KEYS = ['worldbookPresets', 'bindingPresets'];
+  const PREF_STORAGE_KEYS = ['worldbookPresets'];
 
   /** 解析酒馆助手注入的 API：脚本作用域里的全局函数优先，其次 TavernHelper 对象。 */
   function tavernApi(name) {
@@ -404,9 +402,7 @@
     if (!stored || typeof stored !== 'object') return defaults;
     return {
       ...defaults,
-      ...stored,
       worldbookPresets: Array.isArray(stored.worldbookPresets) ? stored.worldbookPresets : defaults.worldbookPresets,
-      bindingPresets: Array.isArray(stored.bindingPresets) ? stored.bindingPresets : defaults.bindingPresets,
     };
   }
 
@@ -435,10 +431,6 @@
     names: [],
     /** 全局开启的世界书 */
     globalNames: new Set(),
-    /** 当前角色卡绑定：{primary, additional} 或 null */
-    charBooks: null,
-    /** 当前聊天绑定：string|null */
-    chatBook: null,
     /** 偏好 */
     preferences: loadPreferences(),
     /** 操作中的计数，用于防止重复点击 */
@@ -467,29 +459,6 @@
     return UI_WINDOW.TavernHelper || window.TavernHelper || state.T;
   }
 
-  function safeGetCharBooks() {
-    try {
-      const T = getTavernHelper();
-      const result = T.getCharWorldbookNames('current');
-      if (!result || typeof result !== 'object') return null;
-      return {
-        primary: result.primary || null,
-        additional: safeArray(result.additional).filter(Boolean),
-      };
-    } catch (error) {
-      return null;
-    }
-  }
-
-  function safeGetChatBook() {
-    try {
-      const T = getTavernHelper();
-      return T.getChatWorldbookName('current') || null;
-    } catch (error) {
-      return null;
-    }
-  }
-
   function refreshBindings() {
     const T = getTavernHelper();
     if (!T || !T.getWorldbookNames) return;
@@ -498,8 +467,6 @@
     } catch (error) {
       state.globalNames = new Set();
     }
-    state.charBooks = safeGetCharBooks();
-    state.chatBook = safeGetChatBook();
   }
 
   async function refreshWorldbookNames() {
@@ -859,100 +826,6 @@
   }
 
   // ---------------------------------------------------------------------------
-  // 预设：角色 / 聊天绑定
-  // ---------------------------------------------------------------------------
-
-  function describeBindingPreset(preset) {
-    const globalCount = safeArray(preset.global).length;
-    const charCount = (preset.charPrimary ? 1 : 0) + safeArray(preset.charAdditional).length;
-    return `全局 ${globalCount} 本 · 角色 ${charCount} 本${preset.chat ? ' · 聊天 1 本' : ''}`;
-  }
-
-  async function saveBindingPresetFromCurrent() {
-    const name = await inputDialog('保存绑定预设', '预设名称', `绑定组合 ${new Date().toLocaleDateString()}`, {
-      okText: '保存',
-    });
-    if (!name) return;
-    try {
-      await refreshWorldbookNames();
-    } catch (error) {
-      console.warn('[世界书管理器] 刷新世界书列表失败', error);
-    }
-    const preset = {
-      id: uniqueId('bind'),
-      name,
-      global: Array.from(state.globalNames),
-      charPrimary: state.charBooks ? state.charBooks.primary : null,
-      charAdditional: state.charBooks ? state.charBooks.additional.slice() : [],
-      chat: state.chatBook,
-      createdAt: Date.now(),
-    };
-    state.preferences.bindingPresets.push(preset);
-    savePreferences();
-    renderPresets();
-    notify(`已保存绑定预设：${name}`, 'success');
-  }
-
-  async function applyBindingPreset(presetId) {
-    const preset = (state.preferences.bindingPresets || []).find(item => item.id === presetId);
-    if (!preset) return;
-    const okNames = name => name && state.names.includes(name);
-    const global = safeArray(preset.global).filter(okNames);
-    const base = {
-      global: global,
-      charPrimary: okNames(preset.charPrimary) ? preset.charPrimary : null,
-      charAdditional: safeArray(preset.charAdditional).filter(okNames),
-      chat: okNames(preset.chat) ? preset.chat : null,
-    };
-    const ok = await confirmDialog(
-      '应用绑定预设',
-      `将把当前绑定切换为：\n全局：${base.global.length} 本\n角色主世界书：${base.charPrimary || '无'}\n角色附加：${base.charAdditional.length} 本\n聊天：${base.chat || '无'}\n\n继续吗？`,
-      { okText: '应用' },
-    );
-    if (!ok) return;
-    try {
-      await setGlobalBindings(base.global);
-      if (state.charBooks) {
-        await applyCharBooks({ primary: base.charPrimary, additional: base.charAdditional });
-      } else {
-        notify('未打开角色卡，已跳过角色绑定', 'warn');
-      }
-      try {
-        await setChatBinding(base.chat);
-      } catch (error) {
-        notify('聊天绑定应用失败，可能未打开聊天', 'warn');
-      }
-      refreshBindings();
-      renderAll();
-      notify(`已应用绑定预设：${preset.name}`, 'success');
-    } catch (error) {
-      notify(formatError(error), 'error');
-    }
-  }
-
-  async function duplicateBindingPreset(presetId) {
-    const preset = (state.preferences.bindingPresets || []).find(item => item.id === presetId);
-    if (!preset) return;
-    const name = await inputDialog('复制绑定预设', '新预设名称', `${preset.name} 副本`, { okText: '复制' });
-    if (!name) return;
-    state.preferences.bindingPresets.push({ ...clone(preset), id: uniqueId('bind'), name, createdAt: Date.now() });
-    savePreferences();
-    renderPresets();
-    notify(`已复制预设：${name}`, 'success');
-  }
-
-  async function deleteBindingPreset(presetId) {
-    const preset = (state.preferences.bindingPresets || []).find(item => item.id === presetId);
-    if (!preset) return;
-    const ok = await confirmDialog('删除绑定预设', `确定删除绑定预设「${preset.name}」吗？`, { okText: '删除', danger: true });
-    if (!ok) return;
-    state.preferences.bindingPresets = state.preferences.bindingPresets.filter(item => item.id !== presetId);
-    savePreferences();
-    renderPresets();
-    notify('绑定预设已删除', 'success');
-  }
-
-  // ---------------------------------------------------------------------------
   // 预设备份：导出 / 导入
   // ---------------------------------------------------------------------------
 
@@ -965,7 +838,6 @@
       script: WBM.name,
       exportedAt: new Date().toISOString(),
       worldbookPresets: clone(state.preferences.worldbookPresets || []),
-      bindingPresets: clone(state.preferences.bindingPresets || []),
     };
   }
 
@@ -973,24 +845,23 @@
     try {
       const backup = collectPresetBackup();
       downloadFile(`世界书预设备份-${makeTimestamp()}.json`, JSON.stringify(backup, null, 2));
-      notify(`已导出：世界书预设 ${backup.worldbookPresets.length} 个、绑定预设 ${backup.bindingPresets.length} 个`, 'success');
+      notify(`已导出：世界书预设 ${backup.worldbookPresets.length} 个`, 'success');
     } catch (error) {
       notify(formatError(error), 'error');
     }
   }
 
-  /** 把导入文件规整成 {worldbookPresets, bindingPresets}，非法时抛错。 */
+  /** 把导入文件规整成 {worldbookPresets}，非法时抛错。 */
   function normalisePresetBackup(raw) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
       throw new Error('文件内容不是有效的预设备份');
     }
     const ensureId = item => (item && typeof item === 'object' ? { ...item, id: item.id || uniqueId('imported') } : null);
     const worldbookPresets = (Array.isArray(raw.worldbookPresets) ? raw.worldbookPresets : []).map(ensureId).filter(Boolean);
-    const bindingPresets = (Array.isArray(raw.bindingPresets) ? raw.bindingPresets : []).map(ensureId).filter(Boolean);
-    if (!worldbookPresets.length && !bindingPresets.length) {
+    if (!worldbookPresets.length) {
       throw new Error('文件里没有可导入的预设');
     }
-    return { worldbookPresets, bindingPresets };
+    return { worldbookPresets };
   }
 
   function mergePresets(current, incoming) {
@@ -1043,29 +914,22 @@
     }
 
     const currentWb = state.preferences.worldbookPresets || [];
-    const currentBind = state.preferences.bindingPresets || [];
     const wbNew = backup.worldbookPresets.filter(item => !currentWb.some(existing => existing.id === item.id)).length;
-    const bindNew = backup.bindingPresets.filter(item => !currentBind.some(existing => existing.id === item.id)).length;
     const summary =
-      `文件包含：世界书预设 ${backup.worldbookPresets.length} 个、绑定预设 ${backup.bindingPresets.length} 个。\n\n` +
-      `合并导入：保留现有预设，按 id 覆盖同名项（新增 ${wbNew + bindNew} 个）。\n` +
+      `文件包含：世界书预设 ${backup.worldbookPresets.length} 个。\n\n` +
+      `合并导入：保留现有预设，按 id 覆盖同名项（新增 ${wbNew} 个）。\n` +
       `覆盖导入：清空当前预设库，只保留文件内容。`;
     const mode = await askImportMode(summary);
     if (mode === 'cancel') return;
 
     if (mode === 'replace') {
       state.preferences.worldbookPresets = backup.worldbookPresets;
-      state.preferences.bindingPresets = backup.bindingPresets;
     } else {
       state.preferences.worldbookPresets = mergePresets(currentWb, backup.worldbookPresets);
-      state.preferences.bindingPresets = mergePresets(currentBind, backup.bindingPresets);
     }
     savePreferences();
     renderPresets();
-    notify(
-      `导入完成：世界书预设 ${state.preferences.worldbookPresets.length} 个、绑定预设 ${state.preferences.bindingPresets.length} 个`,
-      'success',
-    );
+    notify(`导入完成：世界书预设 ${state.preferences.worldbookPresets.length} 个`, 'success');
   }
 
   // ---------------------------------------------------------------------------
@@ -1076,24 +940,6 @@
     const T = getTavernHelper();
     const valid = safeArray(names).filter(name => state.names.includes(name));
     await T.rebindGlobalWorldbooks(valid);
-    refreshBindings();
-    scheduleRender();
-  }
-
-  async function applyCharBooks(books) {
-    const T = getTavernHelper();
-    await T.rebindCharWorldbooks('current', {
-      primary: books.primary || null,
-      additional: safeArray(books.additional).filter(Boolean),
-    });
-    refreshBindings();
-    scheduleRender();
-  }
-
-  async function setChatBinding(name) {
-    const T = getTavernHelper();
-    if (name) await T.rebindChatWorldbook('current', name);
-    else await T.rebindChatWorldbook('current', null);
     refreshBindings();
     scheduleRender();
   }
@@ -1264,15 +1110,6 @@
               快速切换全局启用的世界书组合；可选记录每本世界书内条目的启用/禁用状态，一键恢复。
             </div>
             <div class="wbm-preset-list" id="wbm_worldbook_preset_list"></div>
-
-            <div class="wbm-section-title">
-              <span>角色 / 聊天绑定预设</span>
-              <button type="button" class="wbm-btn" id="wbm_binding_save"><i class="fa-solid fa-bookmark"></i> 保存当前</button>
-            </div>
-            <div class="wbm-section-hint">
-              保存全局 + 当前角色卡 + 当前聊天的完整绑定组合。
-            </div>
-            <div class="wbm-preset-list" id="wbm_binding_preset_list"></div>
           </section>
         </div>
 
@@ -1299,7 +1136,6 @@
     );
 
     setupPresetListInteractions($overlay.find('#wbm_worldbook_preset_list'), 'worldbookPresets');
-    setupPresetListInteractions($overlay.find('#wbm_binding_preset_list'), 'bindingPresets');
 
     $overlay.find('.wbm-header-actions').on('pointerdown', event => event.stopPropagation());
     $overlay.find('#wbm_close').on('click', closeManager);
@@ -1313,7 +1149,6 @@
       }
     });
     $overlay.find('#wbm_wbp_save').on('click', saveWorldbookPresetFromCurrent);
-    $overlay.find('#wbm_binding_save').on('click', saveBindingPresetFromCurrent);
     $overlay.find('#wbm_export_presets').on('click', exportPresets);
     $overlay.find('#wbm_import_presets').on('click', () => $overlay.find('#wbm_import_file').trigger('click'));
     $overlay.find('#wbm_import_file').on('change', async function () {
@@ -1345,7 +1180,6 @@
   function renderPresets() {
     if (!state.$overlay) return;
     const worldbookPresets = state.preferences.worldbookPresets || [];
-    const bindingPresets = state.preferences.bindingPresets || [];
 
     const worldbookPresetHtml = worldbookPresets.length
       ? worldbookPresets
@@ -1368,28 +1202,7 @@
           .join('')
       : `<div class="wbm-empty">还没有全局世界书预设</div>`;
 
-    const bindingHtml = bindingPresets.length
-      ? bindingPresets
-          .map(
-            preset => `
-              <div class="wbm-preset-item" data-binding-preset="${escapeHtml(preset.id)}" data-preset-id="${escapeHtml(preset.id)}">
-                <span class="wbm-preset-handle" title="按住拖动排序"><i class="fa-solid fa-grip-vertical"></i></span>
-                <div class="wbm-preset-main">
-                  <div class="wbm-preset-name" data-preset-name title="双击重命名">${escapeHtml(preset.name)}</div>
-                  <div class="wbm-preset-meta">${escapeHtml(describeBindingPreset(preset))}</div>
-                </div>
-                <div class="wbm-preset-actions">
-                  <button type="button" class="wbm-icon-btn" data-binding-preset-action="apply" data-preset-id="${escapeHtml(preset.id)}" title="应用绑定"><i class="fa-solid fa-check"></i></button>
-                  <button type="button" class="wbm-icon-btn" data-binding-preset-action="copy" data-preset-id="${escapeHtml(preset.id)}" title="重命名/复制"><i class="fa-solid fa-copy"></i></button>
-                  <button type="button" class="wbm-icon-btn" data-binding-preset-action="delete" data-preset-id="${escapeHtml(preset.id)}" title="删除预设"><i class="fa-solid fa-trash-can"></i></button>
-                </div>
-              </div>`,
-          )
-          .join('')
-      : `<div class="wbm-empty">还没有绑定预设</div>`;
-
     state.$overlay.find('#wbm_worldbook_preset_list').html(worldbookPresetHtml);
-    state.$overlay.find('#wbm_binding_preset_list').html(bindingHtml);
 
     state.$overlay
       .find('[data-wbp-preset-action]')
@@ -1401,17 +1214,6 @@
         else if (action === 'update') updateWorldbookPreset(id);
         else if (action === 'copy') duplicateWorldbookPreset(id);
         else if (action === 'delete') deleteWorldbookPreset(id);
-      });
-
-    state.$overlay
-      .find('[data-binding-preset-action]')
-      .off('click')
-      .on('click', function () {
-        const action = $(this).data('binding-preset-action');
-        const id = $(this).data('preset-id');
-        if (action === 'apply') applyBindingPreset(id);
-        else if (action === 'copy') duplicateBindingPreset(id);
-        else if (action === 'delete') deleteBindingPreset(id);
       });
   }
 
@@ -1604,7 +1406,7 @@
           </div>
           <div class="inline-drawer-content">
             <div class="wbm-help" style="margin-bottom:8px">
-              全局世界书预设、角色 / 聊天绑定预设。需要先启用酒馆助手 (JS-Slash-Runner)。
+              全局世界书预设管理。需要先启用酒馆助手 (JS-Slash-Runner)。
             </div>
             <div class="flex-container flexGap5" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <div id="wbm_settings_open" class="menu_button">世界书管理设置</div>
