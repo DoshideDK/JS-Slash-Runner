@@ -7,124 +7,256 @@
     var style = doc.createElement('style');
     style.id = 'wbm_script_style';
     style.textContent = [
-      '/* ===== 世界书管理器 ===== */',
+      '/* ===== 世界书管理器 · 典雅书卷暗金主题 ===== */',
       ':root {',
-      '  --wbm-line: rgba(255, 255, 255, 0.09);',
-      '  --wbm-line-strong: rgba(255, 255, 255, 0.16);',
-      '  --wbm-text: #e8ebf6;',
-      '  --wbm-muted: #9299ad;',
-      '  --wbm-faint: #656c7f;',
-      '  --wbm-accent: #7c6cff;',
-      '  --wbm-accent-2: #3dd6c6;',
-      '  --wbm-danger: #ff647c;',
-      '  --wbm-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);',
+      '  --wbm-bg: #151311;',
+      '  --wbm-bg-elevated: #1c1916;',
+      '  --wbm-bg-card: #211d19;',
+      '  --wbm-bg-card-hover: #28231e;',
+      '  --wbm-line: rgba(214, 188, 148, 0.10);',
+      '  --wbm-line-strong: rgba(214, 188, 148, 0.20);',
+      '  --wbm-text: #ebe4d8;',
+      '  --wbm-muted: #a69b8a;',
+      '  --wbm-faint: #6e6559;',
+      '  --wbm-gold: #c9a25e;',
+      '  --wbm-gold-bright: #dfc082;',
+      '  --wbm-gold-dim: rgba(201, 162, 94, 0.14);',
+      '  --wbm-danger: #d46a6a;',
+      '  --wbm-shadow: 0 28px 80px rgba(0, 0, 0, 0.72), 0 4px 18px rgba(0, 0, 0, 0.45);',
       '}',
       '/* 浮动窗口，不锁定背景滚动 */',
       '#wbm_overlay, #wbm_overlay * { box-sizing: border-box; }',
+      '@keyframes wbm-pop-in {',
+      '  from { opacity: 0; transform: translateY(6px) scale(0.985); }',
+      '  to { opacity: 1; transform: translateY(0) scale(1); }',
+      '}',
       '#wbm_overlay {',
       '  position: fixed; z-index: 2147482000; display: none;',
       '  grid-template-rows: auto minmax(0, 1fr) auto;',
-      '  color: var(--wbm-text); font-size: 14px; line-height: 1.5;',
-      '  font-family: var(--mainFontFamily, "Noto Sans SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif);',
-      '  background: linear-gradient(150deg, rgba(30, 33, 47, 0.99), rgba(17, 19, 28, 0.99));',
-      '  border: 1px solid var(--wbm-line-strong); border-radius: 14px;',
-      '  box-shadow: var(--wbm-shadow); overflow: hidden;',
+      '  color: var(--wbm-text); font-size: 13.5px; line-height: 1.5;',
+      '  font-family: var(--mainFontFamily, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif);',
+      '  background: radial-gradient(120% 90% at 50% 0%, rgba(201, 162, 94, 0.06) 0%, transparent 65%), var(--wbm-bg);',
+      '  border: 1px solid var(--wbm-line-strong); border-radius: 10px;',
+      '  box-shadow: var(--wbm-shadow), inset 0 1px 0 rgba(255, 244, 224, 0.06);',
+      '  overflow: hidden;',
+      '  transition: box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.22s ease;',
       '}',
-      '#wbm_overlay.wbm-visible { display: grid; }',
+      '#wbm_overlay.wbm-visible { display: grid; animation: wbm-pop-in 0.2s cubic-bezier(0.22, 1, 0.36, 1); }',
+      '#wbm_overlay.is-window-dragging {',
+      '  border-color: rgba(201, 162, 94, 0.38);',
+      '  box-shadow: 0 36px 96px rgba(0, 0, 0, 0.82), 0 8px 28px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 244, 224, 0.09);',
+      '}',
       '#wbm_overlay::before {',
-      '  content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; pointer-events: none;',
-      '  background: linear-gradient(90deg, var(--wbm-accent), var(--wbm-accent-2), #67aaff);',
+      '  content: ""; position: absolute; inset: 0 0 auto 0; height: 1px; pointer-events: none;',
+      '  background: linear-gradient(90deg, transparent 5%, rgba(201, 162, 94, 0.55) 50%, transparent 95%);',
       '}',
       '.wbm-header {',
-      '  display: flex; align-items: center; gap: 16px; padding: 13px 16px 12px;',
-      '  border-bottom: 1px solid var(--wbm-line); background: rgba(255, 255, 255, 0.018); flex: 0 0 auto;',
+      '  display: flex; align-items: center; gap: 14px; padding: 14px 16px 13px;',
+      '  border-bottom: 1px solid var(--wbm-line); background: rgba(255, 248, 235, 0.015); flex: 0 0 auto;',
       '  cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none;',
       '}',
       '.wbm-header:active { cursor: grabbing; }',
       '.wbm-header-actions { cursor: default; }',
       '.wbm-resize {',
-      '  position: absolute; z-index: 50; right: 0; bottom: 0; width: 22px; height: 22px;',
+      '  position: absolute; z-index: 50; right: 0; bottom: 0; width: 20px; height: 20px;',
       '  cursor: nwse-resize; touch-action: none; -webkit-user-select: none; user-select: none;',
       '  -webkit-tap-highlight-color: transparent;',
       '}',
       '.wbm-resize::after {',
-      '  content: ""; position: absolute; right: 4px; bottom: 4px; width: 8px; height: 8px;',
-      '  border-right: 2px solid var(--wbm-faint); border-bottom: 2px solid var(--wbm-faint); opacity: 0.85;',
+      '  content: ""; position: absolute; right: 5px; bottom: 5px; width: 7px; height: 7px;',
+      '  border-right: 1.5px solid var(--wbm-faint); border-bottom: 1.5px solid var(--wbm-faint); opacity: 0.7;',
+      '  transition: border-color 0.15s ease, opacity 0.15s ease;',
       '}',
+      '.wbm-resize:hover::after { border-color: var(--wbm-gold); opacity: 1; }',
       '.wbm-brand { display: flex; align-items: center; gap: 11px; min-width: 0; }',
       '.wbm-brand-icon {',
-      '  display: flex; align-items: center; justify-content: center; width: 38px; height: 38px;',
-      '  border-radius: 12px; color: #fff; font-size: 17px;',
-      '  background: linear-gradient(135deg, var(--wbm-accent), var(--wbm-accent-2));',
-      '  box-shadow: 0 8px 20px rgba(124, 108, 255, 0.32);',
+      '  display: flex; align-items: center; justify-content: center; width: 34px; height: 34px;',
+      '  border-radius: 8px; color: var(--wbm-gold-bright); font-size: 15px;',
+      '  background: linear-gradient(180deg, rgba(201, 162, 94, 0.16), rgba(201, 162, 94, 0.06));',
+      '  border: 1px solid rgba(201, 162, 94, 0.32);',
+      '  box-shadow: inset 0 1px 0 rgba(255, 244, 224, 0.12);',
       '}',
-      '.wbm-brand h2 { margin: 0; font-size: 17px; line-height: 1.25; letter-spacing: 0.02em; }',
-      '.wbm-brand p { margin: 2px 0 0; color: var(--wbm-muted); font-size: 12px; }',
+      '.wbm-brand h2 {',
+      '  margin: 0; font-size: 15.5px; font-weight: 600; line-height: 1.25; letter-spacing: 0.03em;',
+      '  color: var(--wbm-text); font-family: "Noto Serif SC", "Songti SC", "STSong", Georgia, serif;',
+      '}',
+      '.wbm-brand p { margin: 2px 0 0; color: var(--wbm-muted); font-size: 11.5px; letter-spacing: 0.01em; }',
       '.wbm-header-spacer { flex: 1; }',
-      '.wbm-header-actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; justify-content: flex-end; }',
+      '.wbm-header-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }',
       '.wbm-btn, .wbm-btn-ghost, .wbm-icon-btn {',
-      '  appearance: none; border: 1px solid var(--wbm-line-strong); border-radius: 9px;',
-      '  background: rgba(255, 255, 255, 0.045); color: var(--wbm-text);',
-      '  font: inherit; font-size: 13px; line-height: 1; padding: 8px 11px; cursor: pointer;',
-      '  transition: background 0.15s ease, border-color 0.15s ease, transform 0.06s ease;',
+      '  appearance: none; border: 1px solid var(--wbm-line-strong); border-radius: 6px;',
+      '  background: rgba(255, 248, 235, 0.03); color: var(--wbm-muted);',
+      '  font: inherit; font-size: 12.5px; line-height: 1; padding: 7px 11px; cursor: pointer;',
+      '  display: inline-flex; align-items: center; justify-content: center; gap: 5px;',
+      '  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.1s ease, box-shadow 0.16s ease;',
       '  white-space: nowrap;',
       '}',
-      '.wbm-btn:hover, .wbm-btn-ghost:hover, .wbm-icon-btn:hover { background: rgba(255, 255, 255, 0.09); border-color: rgba(255, 255, 255, 0.28); }',
-      '.wbm-btn:active, .wbm-icon-btn:active { transform: translateY(1px); }',
-      '.wbm-btn.is-primary { background: linear-gradient(135deg, rgba(124, 108, 255, 0.95), rgba(61, 214, 198, 0.88)); border-color: transparent; color: #0b0c12; font-weight: 700; }',
-      '.wbm-btn.is-danger { color: var(--wbm-danger); border-color: rgba(255, 100, 124, 0.42); background: rgba(255, 100, 124, 0.08); }',
-      '.wbm-btn[disabled], .wbm-icon-btn[disabled] { opacity: 0.42; cursor: not-allowed; }',
-      '.wbm-icon-btn { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; }',
-      '.wbm-input, .wbm-textarea {',
-      '  width: 100%; min-width: 0; border: 1px solid var(--wbm-line-strong); border-radius: 9px;',
-      '  background: rgba(8, 9, 14, 0.65); color: var(--wbm-text); font: inherit; font-size: 13px;',
-      '  padding: 8px 10px; outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease;',
+      '.wbm-btn:hover, .wbm-btn-ghost:hover, .wbm-icon-btn:hover {',
+      '  background: rgba(255, 248, 235, 0.07); border-color: rgba(214, 188, 148, 0.32); color: var(--wbm-text);',
       '}',
-      '.wbm-input:focus, .wbm-textarea:focus { border-color: rgba(124, 108, 255, 0.78); box-shadow: 0 0 0 3px rgba(124, 108, 255, 0.14); }',
+      '.wbm-btn:active, .wbm-icon-btn:active { transform: translateY(1px); }',
+      '.wbm-btn.is-primary {',
+      '  background: linear-gradient(180deg, #cfb072 0%, #b8914d 100%);',
+      '  border-color: #d9bc82; color: #17130e; font-weight: 600;',
+      '  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 2px 6px rgba(0, 0, 0, 0.3);',
+      '}',
+      '.wbm-btn.is-primary:hover {',
+      '  background: linear-gradient(180deg, #d8ba7e 0%, #c39c57 100%);',
+      '  border-color: #e4ca94; color: #120f0a;',
+      '}',
+      '.wbm-btn.is-danger {',
+      '  color: var(--wbm-danger); border-color: rgba(212, 106, 106, 0.38); background: rgba(212, 106, 106, 0.08);',
+      '}',
+      '.wbm-btn.is-danger:hover {',
+      '  background: rgba(212, 106, 106, 0.15); border-color: rgba(212, 106, 106, 0.55); color: #e68585;',
+      '}',
+      '.wbm-btn[disabled], .wbm-icon-btn[disabled] { opacity: 0.4; cursor: not-allowed; }',
+      '.wbm-icon-btn { width: 30px; height: 30px; padding: 0; font-size: 13px; }',
+      '.wbm-input, .wbm-textarea {',
+      '  width: 100%; min-width: 0; border: 1px solid var(--wbm-line-strong); border-radius: 6px;',
+      '  background: #100e0c; color: var(--wbm-text); font: inherit; font-size: 13px;',
+      '  padding: 8px 10px; outline: none; transition: border-color 0.16s ease, box-shadow 0.16s ease;',
+      '}',
+      '.wbm-input:focus, .wbm-textarea:focus {',
+      '  border-color: var(--wbm-gold); box-shadow: 0 0 0 3px rgba(201, 162, 94, 0.14);',
+      '}',
       '.wbm-textarea { resize: vertical; min-height: 84px; line-height: 1.55; }',
-      '.wbm-check { display: inline-flex; align-items: center; gap: 7px; color: var(--wbm-text); cursor: pointer; user-select: none; font-size: 13px; }',
-      '.wbm-check input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--wbm-accent); cursor: pointer; }',
-      '.wbm-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }',
-      '.wbm-field > label { color: var(--wbm-muted); font-size: 12px; }',
-      '.wbm-help { color: var(--wbm-faint); font-size: 11.5px; line-height: 1.45; }',
+      '.wbm-check { display: inline-flex; align-items: center; gap: 8px; color: var(--wbm-text); cursor: pointer; user-select: none; font-size: 13px; }',
+      '.wbm-check input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--wbm-gold); cursor: pointer; }',
+      '.wbm-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }',
+      '.wbm-field > label { color: var(--wbm-muted); font-size: 12px; font-weight: 500; }',
+      '.wbm-help { color: var(--wbm-faint); font-size: 11.5px; line-height: 1.5; }',
       '.wbm-hidden { display: none !important; }',
-      '.wbm-right-panels { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 14px 14px 18px; }',
-      '.wbm-right-panels::-webkit-scrollbar { width: 8px; }',
-      '.wbm-right-panels::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.14); border-radius: 999px; }',
-      '.wbm-section-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--wbm-text); }',
-      '.wbm-section-title:not(:first-child) { margin-top: 20px; }',
-      '.wbm-section-hint { color: var(--wbm-faint); font-size: 11.5px; line-height: 1.55; }',
-      '.wbm-preset-list { display: flex; flex-direction: column; gap: 6px; margin-top: 9px; }',
-      '.wbm-preset-item { display: flex; align-items: center; gap: 7px; padding: 8px 9px; border: 1px solid var(--wbm-line); border-radius: 10px; background: rgba(255, 255, 255, 0.024); }',
-      '.wbm-preset-item[data-worldbook-preset] { border-color: rgba(124, 108, 255, 0.24); background: rgba(124, 108, 255, 0.055); }',
+      '.wbm-right-panels { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 16px 16px 20px; }',
+      '.wbm-right-panels::-webkit-scrollbar { width: 6px; }',
+      '.wbm-right-panels::-webkit-scrollbar-thumb { background: rgba(214, 188, 148, 0.16); border-radius: 999px; }',
+      '.wbm-right-panels::-webkit-scrollbar-thumb:hover { background: rgba(214, 188, 148, 0.28); }',
+      '.wbm-section-head {',
+      '  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;',
+      '  padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--wbm-line);',
+      '}',
+      '.wbm-section-title { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--wbm-text); letter-spacing: 0.02em; }',
+      '.wbm-section-hint { margin-top: 3px; color: var(--wbm-faint); font-size: 11.5px; line-height: 1.45; }',
+      '.wbm-preset-list { display: flex; flex-direction: column; gap: 7px; position: relative; }',
+      '.wbm-preset-item {',
+      '  position: relative; display: flex; align-items: center; gap: 9px; padding: 10px 11px 10px 9px;',
+      '  border: 1px solid var(--wbm-line); border-radius: 8px; background: var(--wbm-bg-card);',
+      '  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);',
+      '  transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.2s ease;',
+      '  will-change: transform;',
+      '}',
+      '.wbm-preset-item::before {',
+      '  content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 2.5px;',
+      '  border-radius: 0 2px 2px 0; background: rgba(201, 162, 94, 0.35);',
+      '  transition: background 0.16s ease, top 0.16s ease, bottom 0.16s ease;',
+      '}',
+      '.wbm-preset-item:hover {',
+      '  background: var(--wbm-bg-card-hover); border-color: var(--wbm-line-strong);',
+      '}',
+      '.wbm-preset-item:hover::before { background: var(--wbm-gold); top: 6px; bottom: 6px; }',
       '.wbm-preset-main { flex: 1; min-width: 0; }',
-      '.wbm-preset-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
-      '.wbm-preset-meta { margin-top: 2px; color: var(--wbm-faint); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
-      '.wbm-preset-actions { display: flex; gap: 3px; }',
-      '.wbm-preset-actions .wbm-icon-btn { width: 28px; height: 28px; font-size: 11px; }',
-      '.wbm-preset-handle { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 28px; flex: 0 0 auto; color: var(--wbm-faint); cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; }',
-      '.wbm-preset-handle:hover { color: var(--wbm-text); }',
+      '.wbm-preset-name {',
+      '  font-size: 13.5px; font-weight: 600; color: var(--wbm-text); letter-spacing: 0.01em;',
+      '  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: text;',
+      '}',
+      '.wbm-preset-meta {',
+      '  display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 4px;',
+      '  color: var(--wbm-muted); font-size: 11px;',
+      '}',
+      '.wbm-badge {',
+      '  display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px;',
+      '  border-radius: 4px; font-size: 11px; line-height: 1.45;',
+      '  background: rgba(255, 248, 235, 0.04); border: 1px solid var(--wbm-line); color: var(--wbm-muted);',
+      '}',
+      '.wbm-badge.is-gold {',
+      '  background: rgba(201, 162, 94, 0.10); border-color: rgba(201, 162, 94, 0.24); color: var(--wbm-gold-bright);',
+      '}',
+      '.wbm-preset-actions { display: flex; align-items: center; gap: 4px; }',
+      '.wbm-preset-actions .wbm-icon-btn {',
+      '  width: 28px; height: 28px; font-size: 11.5px; border-color: transparent; background: transparent; color: var(--wbm-faint);',
+      '}',
+      '.wbm-preset-item:hover .wbm-preset-actions .wbm-icon-btn { color: var(--wbm-muted); }',
+      '.wbm-preset-actions .wbm-icon-btn:hover {',
+      '  background: rgba(255, 248, 235, 0.07); border-color: var(--wbm-line-strong); color: var(--wbm-text);',
+      '}',
+      '.wbm-preset-actions .wbm-icon-btn[data-wbp-preset-action="apply"] {',
+      '  color: var(--wbm-gold-bright); background: var(--wbm-gold-dim); border-color: rgba(201, 162, 94, 0.28);',
+      '}',
+      '.wbm-preset-actions .wbm-icon-btn[data-wbp-preset-action="apply"]:hover {',
+      '  background: rgba(201, 162, 94, 0.24); border-color: var(--wbm-gold); color: #fff4df;',
+      '}',
+      '.wbm-preset-actions .wbm-icon-btn[data-wbp-preset-action="delete"]:hover {',
+      '  color: var(--wbm-danger); border-color: rgba(212, 106, 106, 0.38); background: rgba(212, 106, 106, 0.1);',
+      '}',
+      '.wbm-preset-handle {',
+      '  display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 28px;',
+      '  flex: 0 0 auto; color: var(--wbm-faint); opacity: 0.65; cursor: grab;',
+      '  touch-action: none; -webkit-user-select: none; user-select: none;',
+      '  transition: color 0.15s ease, opacity 0.15s ease;',
+      '}',
+      '.wbm-preset-item:hover .wbm-preset-handle { opacity: 1; }',
+      '.wbm-preset-handle:hover { color: var(--wbm-gold-bright); }',
       '.wbm-preset-handle:active { cursor: grabbing; }',
-      '.wbm-preset-name { cursor: text; }',
-      '.wbm-preset-item.is-dragging { opacity: 0.55; border-color: rgba(124, 108, 255, 0.7); background: rgba(124, 108, 255, 0.1); }',
+      '.wbm-preset-item.is-dragging {',
+      '  z-index: 20; cursor: grabbing;',
+      '  background: #2b251f; border-color: var(--wbm-gold);',
+      '  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(201, 162, 94, 0.25);',
+      '  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.18s ease !important;',
+      '}',
+      '.wbm-preset-item.is-dragging::before { background: var(--wbm-gold-bright); top: 4px; bottom: 4px; }',
+      '.wbm-preset-item.is-settling {',
+      '  z-index: 15;',
+      '  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), background 0.16s ease, border-color 0.16s ease, box-shadow 0.2s ease !important;',
+      '}',
       '.wbm-preset-name.is-renaming { display: none; }',
-      '.wbm-preset-name-input { font-size: 13px; font-weight: 600; padding: 4px 7px; }',
-      '.wbm-empty { display: flex; align-items: center; justify-content: center; min-height: 72px; padding: 16px; color: var(--wbm-faint); font-size: 12px; border: 1px dashed var(--wbm-line); border-radius: 10px; margin-top: 9px; }',
-      '.wbm-footer { display: flex; align-items: center; gap: 10px; padding: 7px 14px; border-top: 1px solid var(--wbm-line); color: var(--wbm-faint); font-size: 11.5px; flex: 0 0 auto; }',
-      '.wbm-footer .wbm-footer-right { margin-left: auto; }',
-      '.wbm-dialog-mask { position: fixed; inset: 0; z-index: 2147482100; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(4, 5, 9, 0.66); backdrop-filter: blur(5px); }',
-      '.wbm-dialog { display: flex; flex-direction: column; width: min(560px, calc(100vw - 30px)); max-height: min(86vh, 820px); color: var(--wbm-text); font-size: 13.5px; background: linear-gradient(150deg, #202433, #14161f); border: 1px solid var(--wbm-line-strong); border-radius: 16px; box-shadow: var(--wbm-shadow); overflow: hidden; }',
-      '.wbm-dialog-head { display: flex; align-items: center; gap: 9px; padding: 13px 15px; border-bottom: 1px solid var(--wbm-line); }',
-      '.wbm-dialog-head h3 { flex: 1; margin: 0; font-size: 15px; }',
-      '.wbm-dialog-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 14px 15px 16px; }',
-      '.wbm-dialog-foot { display: flex; align-items: center; justify-content: flex-end; gap: 7px; padding: 11px 15px; border-top: 1px solid var(--wbm-line); }',
+      '.wbm-preset-name-input { font-size: 13px; font-weight: 600; padding: 4px 8px; }',
+      '.wbm-empty {',
+      '  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;',
+      '  min-height: 96px; padding: 20px; color: var(--wbm-faint); font-size: 12px;',
+      '  border: 1px dashed var(--wbm-line-strong); border-radius: 8px; background: rgba(255, 248, 235, 0.012);',
+      '}',
+      '.wbm-empty i { font-size: 18px; color: var(--wbm-gold); opacity: 0.55; }',
+      '.wbm-footer {',
+      '  display: flex; align-items: center; gap: 10px; padding: 8px 16px;',
+      '  border-top: 1px solid var(--wbm-line); background: rgba(0, 0, 0, 0.18);',
+      '  color: var(--wbm-faint); font-size: 11px; flex: 0 0 auto;',
+      '}',
+      '.wbm-status-dot {',
+      '  display: inline-block; width: 6px; height: 6px; border-radius: 50%;',
+      '  background: var(--wbm-gold); margin-right: 6px; vertical-align: middle; opacity: 0.8;',
+      '}',
+      '.wbm-footer .wbm-footer-right { margin-left: auto; font-variant-numeric: tabular-nums; }',
+      '.wbm-dialog-mask {',
+      '  position: fixed; inset: 0; z-index: 2147482100; display: flex; align-items: center; justify-content: center;',
+      '  padding: 20px; background: rgba(8, 7, 6, 0.72); backdrop-filter: blur(4px);',
+      '}',
+      '.wbm-dialog {',
+      '  display: flex; flex-direction: column; width: min(520px, calc(100vw - 30px)); max-height: min(86vh, 800px);',
+      '  color: var(--wbm-text); font-size: 13.5px; background: var(--wbm-bg-elevated);',
+      '  border: 1px solid var(--wbm-line-strong); border-radius: 10px;',
+      '  box-shadow: var(--wbm-shadow), inset 0 1px 0 rgba(255, 244, 224, 0.06); overflow: hidden;',
+      '  animation: wbm-pop-in 0.18s cubic-bezier(0.22, 1, 0.36, 1);',
+      '}',
+      '.wbm-dialog-head {',
+      '  display: flex; align-items: center; gap: 9px; padding: 13px 16px;',
+      '  border-bottom: 1px solid var(--wbm-line); background: rgba(255, 248, 235, 0.015);',
+      '}',
+      '.wbm-dialog-head h3 {',
+      '  flex: 1; margin: 0; font-size: 14.5px; font-weight: 600;',
+      '  font-family: "Noto Serif SC", "Songti SC", "STSong", Georgia, serif; color: var(--wbm-text);',
+      '}',
+      '.wbm-dialog-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 16px; }',
+      '.wbm-dialog-foot {',
+      '  display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 11px 16px;',
+      '  border-top: 1px solid var(--wbm-line); background: rgba(0, 0, 0, 0.15);',
+      '}',
       '.wbm-menu-item { cursor: pointer; }',
       '@media (max-width: 680px) {',
-      '  .wbm-header { padding: 10px 11px; }',
+      '  .wbm-header { padding: 11px 12px; }',
       '  .wbm-brand p { display: none; }',
       '  .wbm-input, .wbm-textarea { font-size: 16px; }',
       '  .wbm-dialog-mask { padding: 0; align-items: flex-end; }',
-      '  .wbm-dialog { width: 100vw; max-height: 100dvh; border-radius: 18px 18px 0 0; border-bottom: 0; }',
+      '  .wbm-dialog { width: 100vw; max-height: 100dvh; border-radius: 14px 14px 0 0; border-bottom: 0; }',
       '  .wbm-dialog-foot .wbm-btn { flex: 1 1 auto; min-height: 40px; }',
       '}',
     ].join('\n');
@@ -644,10 +776,14 @@
   // 预设：全局世界书
   // ---------------------------------------------------------------------------
 
-  function describeWorldbookPreset(preset) {
+  function describeWorldbookPresetBadges(preset) {
     const globalCount = safeArray(preset.global).length;
     const stateBooks = preset.entryStates && typeof preset.entryStates === 'object' ? Object.keys(preset.entryStates).length : 0;
-    return `全局 ${globalCount} 本${preset.recordEntries ? ` · 记录条目状态 ${stateBooks} 本` : ' · 不记录条目'}`;
+    const globalBadge = `<span class="wbm-badge is-gold">全局 ${globalCount} 本</span>`;
+    const entryBadge = preset.recordEntries
+      ? `<span class="wbm-badge">含条目状态 · ${stateBooks} 本</span>`
+      : `<span class="wbm-badge">仅切换世界书</span>`;
+    return `${globalBadge}${entryBadge}`;
   }
 
   async function collectWorldbookEntryStates(names) {
@@ -1042,6 +1178,7 @@
       const startRect = readWindowRect($window);
       const startX = native.clientX;
       const startY = native.clientY;
+      $window.addClass('is-window-dragging');
 
       const onMove = move => {
         if (move.pointerId !== pointerId) return;
@@ -1062,6 +1199,7 @@
         if (handle && handle.hasPointerCapture && handle.hasPointerCapture(pointerId)) {
           handle.releasePointerCapture(pointerId);
         }
+        $window.removeClass('is-window-dragging');
         saveWindowRect(readWindowRect($window));
       };
       UI_DOCUMENT.addEventListener('pointermove', onMove);
@@ -1102,20 +1240,22 @@
 
         <div class="wbm-right-panels">
           <section id="wbm_panel_presets">
-            <div class="wbm-section-title">
-              <span>全局世界书预设</span>
-              <button type="button" class="wbm-btn is-primary" id="wbm_wbp_save"><i class="fa-solid fa-bolt"></i> 保存当前</button>
-            </div>
-            <div class="wbm-section-hint">
-              快速切换全局启用的世界书组合；可选记录每本世界书内条目的启用/禁用状态，一键恢复。
+            <div class="wbm-section-head">
+              <div>
+                <h3 class="wbm-section-title">全局世界书预设</h3>
+                <div class="wbm-section-hint">
+                  快速切换全局启用的世界书组合；可选记录每本世界书内条目的启用/禁用状态。
+                </div>
+              </div>
+              <button type="button" class="wbm-btn is-primary" id="wbm_wbp_save"><i class="fa-solid fa-plus"></i> 保存当前</button>
             </div>
             <div class="wbm-preset-list" id="wbm_worldbook_preset_list"></div>
           </section>
         </div>
 
         <footer class="wbm-footer">
-          <span id="wbm_status">就绪</span>
-          <span class="wbm-footer-right">v${WBM.version} · 酒馆助手接口</span>
+          <span><span class="wbm-status-dot"></span><span id="wbm_status">就绪</span></span>
+          <span class="wbm-footer-right">v${WBM.version} · 酒馆助手</span>
         </footer>
 
       <div class="wbm-resize" title="调整大小"></div>`;
@@ -1189,18 +1329,18 @@
                 <span class="wbm-preset-handle" title="按住拖动排序"><i class="fa-solid fa-grip-vertical"></i></span>
                 <div class="wbm-preset-main">
                   <div class="wbm-preset-name" data-preset-name title="双击重命名">${escapeHtml(preset.name)}</div>
-                  <div class="wbm-preset-meta">${escapeHtml(describeWorldbookPreset(preset))}</div>
+                  <div class="wbm-preset-meta">${describeWorldbookPresetBadges(preset)}</div>
                 </div>
                 <div class="wbm-preset-actions">
-                  <button type="button" class="wbm-icon-btn" data-wbp-preset-action="apply" data-preset-id="${escapeHtml(preset.id)}" title="一键应用此世界书预设"><i class="fa-solid fa-bolt"></i></button>
+                  <button type="button" class="wbm-icon-btn" data-wbp-preset-action="apply" data-preset-id="${escapeHtml(preset.id)}" title="一键应用此世界书预设"><i class="fa-solid fa-play"></i></button>
                   <button type="button" class="wbm-icon-btn" data-wbp-preset-action="update" data-preset-id="${escapeHtml(preset.id)}" title="用当前状态更新此预设"><i class="fa-solid fa-rotate"></i></button>
-                  <button type="button" class="wbm-icon-btn" data-wbp-preset-action="copy" data-preset-id="${escapeHtml(preset.id)}" title="复制/重命名"><i class="fa-solid fa-copy"></i></button>
+                  <button type="button" class="wbm-icon-btn" data-wbp-preset-action="copy" data-preset-id="${escapeHtml(preset.id)}" title="复制预设"><i class="fa-solid fa-clone"></i></button>
                   <button type="button" class="wbm-icon-btn" data-wbp-preset-action="delete" data-preset-id="${escapeHtml(preset.id)}" title="删除预设"><i class="fa-solid fa-trash-can"></i></button>
                 </div>
               </div>`,
           )
           .join('')
-      : `<div class="wbm-empty">还没有全局世界书预设</div>`;
+      : `<div class="wbm-empty"><i class="fa-solid fa-book-bookmark"></i><span>暂无全局世界书预设，点击右上角「保存当前」创建</span></div>`;
 
     state.$overlay.find('#wbm_worldbook_preset_list').html(worldbookPresetHtml);
 
@@ -1294,44 +1434,111 @@
       if (!native.isPrimary || native.button !== 0) return;
       native.preventDefault();
       const pointerId = native.pointerId;
+      const handleEl = this;
       const $item = $(this).closest('.wbm-preset-item');
       const itemEl = $item.get(0);
       const startY = native.clientY;
+      let anchorTop = 0;
+      let lastClientY = startY;
       let dragging = false;
+
+      const updateDraggedTransform = () => {
+        const dy = lastClientY - startY;
+        const currentTop = itemEl.offsetTop;
+        const shiftY = dy - (currentTop - anchorTop);
+        itemEl.style.transform = `translate3d(0, ${shiftY}px, 0) scale(1.015)`;
+      };
+
+      const animateSiblings = (beforeTops, excludeEl) => {
+        const children = $list.children('.wbm-preset-item').toArray();
+        for (const el of children) {
+          if (el === excludeEl) continue;
+          const prevTop = beforeTops.get(el);
+          if (prevTop === undefined) continue;
+          const newTop = el.offsetTop;
+          const deltaY = prevTop - newTop;
+          if (Math.abs(deltaY) < 1) continue;
+          el.style.transition = 'none';
+          el.style.transform = `translate3d(0, ${deltaY}px, 0)`;
+          void el.offsetHeight;
+          el.style.transition = 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)';
+          el.style.transform = '';
+        }
+      };
 
       const onMove = move => {
         if (move.pointerId !== pointerId) return;
+        lastClientY = move.clientY;
         if (!dragging) {
-          if (Math.abs(move.clientY - startY) < 5) return;
+          if (Math.abs(move.clientY - startY) < 4) return;
           dragging = true;
-          $item.addClass('is-dragging');
+          anchorTop = itemEl.offsetTop;
+          $item.removeClass('is-settling').addClass('is-dragging');
         }
         move.preventDefault();
+
         const siblings = $list.children('.wbm-preset-item').toArray();
-        let $before = null;
+        const draggedRect = itemEl.getBoundingClientRect();
+        const draggedCenterY = draggedRect.top + draggedRect.height / 2;
+
+        let targetEl = null;
+        let insertBefore = true;
         for (const el of siblings) {
           if (el === itemEl) continue;
           const rect = el.getBoundingClientRect();
-          if (move.clientY < rect.top + rect.height / 2) {
-            $before = $(el);
+          const centerY = rect.top + rect.height / 2;
+          if (draggedCenterY < centerY) {
+            targetEl = el;
+            insertBefore = true;
             break;
           }
+          targetEl = el;
+          insertBefore = false;
         }
-        if ($before) $item.insertBefore($before);
-        else $list.append($item);
+
+        const shouldMove =
+          targetEl &&
+          ((insertBefore && itemEl.nextElementSibling !== targetEl) ||
+            (!insertBefore && itemEl.previousElementSibling !== targetEl));
+
+        if (shouldMove) {
+          const beforeTops = new Map();
+          for (const el of siblings) {
+            if (el !== itemEl) beforeTops.set(el, el.offsetTop);
+          }
+          if (insertBefore) $item.insertBefore(targetEl);
+          else $item.insertAfter(targetEl);
+          animateSiblings(beforeTops, itemEl);
+        }
+
+        updateDraggedTransform();
       };
+
       const onEnd = endEvent => {
         if (endEvent && endEvent.pointerId !== undefined && endEvent.pointerId !== pointerId) return;
         UI_DOCUMENT.removeEventListener('pointermove', onMove);
         UI_DOCUMENT.removeEventListener('pointerup', onEnd);
         UI_DOCUMENT.removeEventListener('pointercancel', onEnd);
+        if (handleEl && handleEl.hasPointerCapture && handleEl.hasPointerCapture(pointerId)) {
+          handleEl.releasePointerCapture(pointerId);
+        }
         if (!dragging) return;
-        $item.removeClass('is-dragging');
+        $item.removeClass('is-dragging').addClass('is-settling');
+        itemEl.style.transform = '';
+        setTimeout(() => {
+          $item.removeClass('is-settling');
+          $list.children('.wbm-preset-item').each(function () {
+            this.style.transition = '';
+            this.style.transform = '';
+          });
+        }, 230);
         persistPresetOrder($list, collectionKey);
       };
+
       UI_DOCUMENT.addEventListener('pointermove', onMove);
       UI_DOCUMENT.addEventListener('pointerup', onEnd);
       UI_DOCUMENT.addEventListener('pointercancel', onEnd);
+      if (handleEl && handleEl.setPointerCapture) handleEl.setPointerCapture(pointerId);
     });
   }
 
