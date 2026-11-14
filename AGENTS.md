@@ -8,7 +8,7 @@
    - 每个脚本对应根目录下的一个独立文件夹（如 `lorebook-manager/`）。
    - `index.js`：脚本完整源码（原生 JavaScript，直接在浏览器运行，无编译打包步骤）。
    - `index.json`：导入酒馆助手的包装器，通过 GitHub API 获取最新 commit SHA 并由 jsDelivr 动态 `import()` 加载 `index.js`。
-   - **新建插件**：直接复制仓库内现存插件的 `index.json` 作为模板，仅修改其中的 `id`（生成新 UUID）、`name`、`info`、`button` 以及 `content` 中的脚本路径（`path`）。
+   - **新建插件**：直接复制仓库内现存插件的 `index.json` 作为模板，仅修改其中的 `id`（生成新 UUID）、`name`、`info`、`button` 以及 `content` 中的脚本路径（`path`）。默认不要在页面下方（聊天框周边或 `#extensionsMenu`）注入快捷按钮，只在插件本身的下拉框中提供按钮。
 2. **禁止引入构建工具链**：
    - **不要**使用 TypeScript、Vue (`.vue`)、Webpack、Tailwind 等需要编译的语法或 npm 依赖。
    - **不要**套用参考仓库中的打包构建（`pnpm build/watch`）、本地静态服务或 `tavern_sync` 流程。
