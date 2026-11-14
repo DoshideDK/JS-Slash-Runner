@@ -1,12 +1,9 @@
 ;(function () {
-  try {
-    var host = (window.parent && window.parent !== window) ? window.parent : window;
-    var doc = host.document;
-    if (!doc) return;
-    if (doc.getElementById('wbm_script_style') || doc.getElementById('worldbook-manager-css')) return;
-    var style = doc.createElement('style');
-    style.id = 'wbm_script_style';
-    style.textContent = [
+  var doc = window.parent.document;
+  if (doc.getElementById('wbm_script_style')) return;
+  var style = doc.createElement('style');
+  style.id = 'wbm_script_style';
+  style.textContent = [
       '/* ===== 世界书管理器 · 典雅书卷暗金主题 ===== */',
       ':root {',
       '  --wbm-bg: #151311;',
@@ -260,60 +257,33 @@
       '  .wbm-dialog-foot .wbm-btn { flex: 1 1 auto; min-height: 40px; }',
       '}',
     ].join('\n');
-    doc.head.appendChild(style);
-  } catch (e) {
-    console.warn('[世界书管理器] CSS 注入失败', e);
-  }
+  doc.head.appendChild(style);
 })();
 
 /* 世界书管理器 for SillyTavern + 酒馆助手 (JS-Slash-Runner)
  * 功能：全局世界书预设。
- * 依赖：window.TavernHelper (酒馆助手)
  */
 (async function () {
   'use strict';
 
-  if (window.__WBM_PRESET_LOADED__) return;
-  window.__WBM_PRESET_LOADED__ = true;
-
-  const UI_WINDOW = window.parent && window.parent !== window ? window.parent : window;
-  const UI_DOCUMENT = UI_WINDOW.document || document;
-  const IS_SCRIPT_IFRAME = UI_WINDOW !== window;
-
-  const $ = UI_WINDOW.jQuery || window.jQuery;
-  if (!$) {
-    console.error('[世界书管理器] 未找到 jQuery，脚本无法加载');
-    return;
-  }
+  const UI_WINDOW = window.parent;
+  const UI_DOCUMENT = UI_WINDOW.document;
 
   /**
-   * 在酒馆助手脚本 iframe 中注册脚本按钮。扩展模式不会调用成功。
+   * 在酒馆助手脚本中注册脚本按钮。
    */
   function registerScriptButton(openFn) {
-    if (!IS_SCRIPT_IFRAME) return false;
     const buttonName = '世界书管理设置';
-    try {
-      if (typeof window.appendInexistentScriptButtons === 'function') {
-        window.appendInexistentScriptButtons([{ name: buttonName, visible: true }]);
-      }
-      if (typeof window.getButtonEvent === 'function' && typeof window.eventOn === 'function') {
-        window.eventOn(window.getButtonEvent(buttonName), openFn);
-      }
-      if (typeof window.replaceScriptInfo === 'function') {
-        window.replaceScriptInfo(
-          [
-            '版本: 1.6.1',
-            '类型: 酒馆助手脚本',
-            '入口: 点击“' + buttonName + '”。',
-            '功能: 全局世界书预设。',
-          ].join('\n'),
-        );
-      }
-      return true;
-    } catch (error) {
-      console.warn('[世界书管理器] 注册脚本按钮失败', error);
-      return false;
-    }
+    appendInexistentScriptButtons([{ name: buttonName, visible: true }]);
+    eventOn(getButtonEvent(buttonName), openFn);
+    replaceScriptInfo(
+      [
+        '版本: 1.6.1',
+        '类型: 酒馆助手脚本',
+        '入口: 点击“' + buttonName + '”。',
+        '功能: 全局世界书预设。',
+      ].join('\n'),
+    );
   }
 
   const WBM = {
@@ -324,42 +294,14 @@
   };
 
   window.WorldbookManager = WBM;
-  if (UI_WINDOW && UI_WINDOW !== window && !UI_WINDOW.WorldbookManager) {
-    UI_WINDOW.WorldbookManager = WBM;
-  }
+  UI_WINDOW.WorldbookManager = WBM;
 
   // ---------------------------------------------------------------------------
   // 基础工具
   // ---------------------------------------------------------------------------
 
-  function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  async function waitFor(check, timeout = 45000, interval = 180) {
-    const started = Date.now();
-    while (Date.now() - started < timeout) {
-      try {
-        const value = check();
-        if (value) return value;
-      } catch (error) {
-        // 继续等待
-      }
-      await sleep(interval);
-    }
-    return null;
-  }
-
-  function clone(value) {
-    if (value === undefined || value === null) return value;
-    try {
-      const cloneImpl = UI_WINDOW.structuredClone || (typeof structuredClone === 'function' ? structuredClone : null);
-      if (cloneImpl) return cloneImpl(value);
-    } catch (error) {
-      // fall through
-    }
-    return JSON.parse(JSON.stringify(value));
-  }
+  const clone = _.cloneDeep;
+  const debounce = _.debounce;
 
   function escapeHtml(value) {
     return String(value === undefined || value === null ? '' : value)
@@ -391,13 +333,7 @@
   }
 
   function notify(message, type = 'info', title = WBM.name) {
-    const toastr = UI_WINDOW.toastr || window.toastr;
-    if (toastr && typeof toastr[type] === 'function') {
-      toastr[type](message, title);
-      return;
-    }
-    if (type === 'error') console.error(`[${title}]`, message);
-    else console.log(`[${title}]`, message);
+    toastr[type](message, title);
   }
 
   function formatError(error) {
@@ -405,14 +341,6 @@
     if (typeof error === 'string') return error;
     if (error.message) return error.message;
     return String(error);
-  }
-
-  function debounce(fn, wait = 180) {
-    let timer = null;
-    return function (...args) {
-      clearTimeout(timer);
-      timer = setTimeout(() => fn.apply(this, args), wait);
-    };
   }
 
   function makeTimestamp() {
@@ -471,30 +399,6 @@
   /** 用于区分「从未写入」与「被清空」的偏好字段。 */
   const PREF_STORAGE_KEYS = ['worldbookPresets'];
 
-  /** 解析酒馆助手注入的 API：脚本作用域里的全局函数优先，其次 TavernHelper 对象。 */
-  function tavernApi(name) {
-    try {
-      if (typeof window[name] === 'function') return window[name].bind(window);
-    } catch (error) {
-      // ignore
-    }
-    const helper = UI_WINDOW.TavernHelper || window.TavernHelper;
-    if (helper && typeof helper[name] === 'function') return helper[name].bind(helper);
-    return null;
-  }
-
-  /** 当前脚本的变量作用域；拿不到脚本 id 时返回 null。 */
-  function getScriptVarScope() {
-    const getScriptId = tavernApi('getScriptId');
-    if (!getScriptId) return null;
-    try {
-      const id = getScriptId();
-      return id ? { type: 'script', script_id: id } : null;
-    } catch (error) {
-      return null;
-    }
-  }
-
   function looksLikePreferences(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     return PREF_STORAGE_KEYS.some(key => Object.prototype.hasOwnProperty.call(value, key));
@@ -502,11 +406,8 @@
 
   /** 读取共享的脚本变量；没有偏好数据时返回 null。 */
   function readSharedPreferences() {
-    const getVariables = tavernApi('getVariables');
-    const scope = getScriptVarScope();
-    if (!getVariables || !scope) return null;
     try {
-      const raw = getVariables(scope);
+      const raw = getVariables({ type: 'script' });
       return looksLikePreferences(raw) ? raw : null;
     } catch (error) {
       console.warn('[世界书管理器] 读取脚本变量失败', error);
@@ -516,11 +417,8 @@
 
   /** 把偏好写入共享的脚本变量；成功返回 true。 */
   function writeSharedPreferences(preferences) {
-    const replaceVariables = tavernApi('replaceVariables');
-    const scope = getScriptVarScope();
-    if (!replaceVariables || !scope) return false;
     try {
-      replaceVariables(clone(preferences), scope);
+      replaceVariables(clone(preferences), { type: 'script' });
       return true;
     } catch (error) {
       console.warn('[世界书管理器] 写入脚本变量失败', error);
@@ -553,8 +451,6 @@
   // ---------------------------------------------------------------------------
 
   const state = {
-    /** 酒馆助手接口 */
-    T: null,
     /** 管理器是否已经打开 */
     opened: false,
     /** 已经初始化的 UI 是否已创建 */
@@ -587,41 +483,27 @@
     if (state.opened && state.domReady) renderAll();
   }, 60);
 
-  function getTavernHelper() {
-    return UI_WINDOW.TavernHelper || window.TavernHelper || state.T;
-  }
-
   function refreshBindings() {
-    const T = getTavernHelper();
-    if (!T || !T.getWorldbookNames) return;
     try {
-      state.globalNames = new Set(T.getGlobalWorldbookNames());
+      state.globalNames = new Set(getGlobalWorldbookNames());
     } catch (error) {
       state.globalNames = new Set();
     }
   }
 
   async function refreshWorldbookNames() {
-    const T = getTavernHelper();
-    if (!T || !T.getWorldbookNames) throw new Error('酒馆助手尚未初始化');
-    state.names = safeArray(T.getWorldbookNames()).slice().sort((a, b) => text(a).localeCompare(text(b), 'zh-Hans-CN'));
+    state.names = safeArray(getWorldbookNames()).slice().sort((a, b) => text(a).localeCompare(text(b), 'zh-Hans-CN'));
     refreshBindings();
     return state.names;
   }
 
   /**
    * 用 mutator 原子地更新某个世界书。
-   * mutator 收到当前条目的深拷贝；若返回值不是数组，则使用传入的数组。
    */
   async function mutateWorldbook(name, mutator) {
-    const T = getTavernHelper();
-    if (!T || !T.getWorldbook || !T.replaceWorldbook) throw new Error('酒馆助手尚未初始化');
     if (!state.names.includes(name)) throw new Error(`世界书不存在：${name}`);
     return enqueueWorldbook(name, async () => {
-      const current = clone(await T.getWorldbook(name));
-      const returned = await mutator(current);
-      const next = Array.isArray(returned) ? returned : current;
-      await T.replaceWorldbook(name, next, { render: 'debounced' });
+      await updateWorldbookWith(name, mutator, { render: 'debounced' });
     });
   }
 
@@ -788,11 +670,10 @@
 
   async function collectWorldbookEntryStates(names) {
     const result = {};
-    const T = getTavernHelper();
     for (const name of safeArray(names)) {
       if (!state.names.includes(name)) continue;
       try {
-        const entries = clone(await T.getWorldbook(name));
+        const entries = await getWorldbook(name);
         const stateMap = {};
         for (const entry of entries) {
           const uid = getEntryUid(entry);
@@ -1073,9 +954,8 @@
   // ---------------------------------------------------------------------------
 
   async function setGlobalBindings(names) {
-    const T = getTavernHelper();
     const valid = safeArray(names).filter(name => state.names.includes(name));
-    await T.rebindGlobalWorldbooks(valid);
+    await rebindGlobalWorldbooks(valid);
     refreshBindings();
     scheduleRender();
   }
@@ -1557,7 +1437,6 @@
     state.$overlay.addClass('wbm-visible');
     $('body').addClass('wbm-opened');
     try {
-      state.T = getTavernHelper();
       await refreshWorldbookNames();
       renderAll();
     } catch (error) {
@@ -1585,10 +1464,8 @@
   // ---------------------------------------------------------------------------
 
   function createMenuEntry() {
-    if ($('#wbm_menu_item').length) return true;
-    const $menu = $('#extensionsMenu');
-    if (!$menu.length) return false;
-    $menu.append(`
+    if ($('#wbm_menu_item').length) return;
+    $('#extensionsMenu').append(`
       <div id="wbm_menu_item" class="list-group-item flex-container flexGap5 interactable wbm-menu-item" title="世界书管理器">
         <i class="fa-solid fa-book-atlas"></i>
         <span>世界书管理器</span>
@@ -1597,14 +1474,11 @@
       $('#extensionsMenu').fadeOut(150);
       toggleManager();
     });
-    return true;
   }
 
   function createSettingsPanel() {
-    if ($('#wbm_settings').length) return true;
-    const $settings = $('#extensions_settings2');
-    if (!$settings.length) return false;
-    $settings.append(`
+    if ($('#wbm_settings').length) return;
+    $('#extensions_settings2').append(`
       <div id="wbm_settings" class="margin-b-1">
         <div class="inline-drawer">
           <div class="inline-drawer-toggle inline-drawer-header">
@@ -1613,7 +1487,7 @@
           </div>
           <div class="inline-drawer-content">
             <div class="wbm-help" style="margin-bottom:8px">
-              全局世界书预设管理。需要先启用酒馆助手 (JS-Slash-Runner)。
+              全局世界书预设管理。
             </div>
             <div class="flex-container flexGap5" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <div id="wbm_settings_open" class="menu_button">世界书管理设置</div>
@@ -1623,30 +1497,12 @@
       </div>`);
 
     $('#wbm_settings_open').on('click', toggleManager);
-    return true;
   }
 
-  async function ensureExtensionUi() {
-    const started = Date.now();
-    while (Date.now() - started < 45000) {
-      const menuReady = createMenuEntry();
-      const settingsReady = createSettingsPanel();
-      if (menuReady && settingsReady) return;
-      await sleep(300);
-    }
-    console.warn('[世界书管理器] 未找到扩展菜单或设置容器，可通过脚本按钮打开');
-  }
+  function initWorldbookManager() {
+    registerScriptButton(() => toggleManager());
 
-  async function initWorldbookManager() {
-    if (IS_SCRIPT_IFRAME) {
-      registerScriptButton(() => toggleManager());
-    }
-
-    const T = await waitFor(() => UI_WINDOW.TavernHelper || window.TavernHelper, 45000, 200);
-    state.T = T || null;
-
-    // 酒馆助手就绪后同步一次偏好：
-    // 优先使用共享脚本变量；若共享数据为空但本机有旧数据，则迁移到共享存储。
+    // 同步一次偏好：优先使用共享脚本变量；若共享数据为空但本机有旧数据，则迁移到共享存储。
     try {
       const shared = readSharedPreferences();
       if (shared) {
@@ -1662,18 +1518,23 @@
       console.warn('[世界书管理器] 同步共享偏好失败', error);
     }
 
-    await ensureExtensionUi();
+    createMenuEntry();
+    createSettingsPanel();
+    refreshBindings();
+  }
 
-    if (T) {
-      try {
-        refreshBindings();
-      } catch (error) {
-        console.warn('[世界书管理器] 初始化绑定信息失败', error);
-      }
-    } else {
-      console.warn('[世界书管理器] 未检测到 window.TavernHelper；请确认酒馆助手已启用');
+  function destroyWorldbookManager() {
+    $(UI_WINDOW).off('.wbm_window');
+    $(UI_DOCUMENT).find('.wbm-dialog-mask').remove();
+    if (state.$overlay) {
+      state.$overlay.remove();
+      state.$overlay = null;
+      state.domReady = false;
     }
-
+    $('#wbm_menu_item').remove();
+    $('#wbm_settings').remove();
+    $('#wbm_script_style').remove();
+    $('body').removeClass('wbm-opened');
   }
 
   // 暴露一些调试接口
@@ -1682,11 +1543,6 @@
   WBM.toggle = toggleManager;
   WBM.state = state;
 
-  if (UI_DOCUMENT.readyState === 'loading') {
-    UI_DOCUMENT.addEventListener('DOMContentLoaded', () => {
-      initWorldbookManager();
-    });
-  } else {
-    initWorldbookManager();
-  }
+  $(initWorldbookManager);
+  $(window).on('pagehide', destroyWorldbookManager);
 })();
