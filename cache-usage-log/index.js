@@ -500,13 +500,9 @@
     $('#cul_export').on('click', exportRecords);
   }
 
-  function registerScriptButtons() {
-    appendInexistentScriptButtons([
-      { name: '导出用量JSON', visible: true },
-      { name: '清空用量记录', visible: true },
-    ]);
-    eventOn(getButtonEvent('导出用量JSON'), exportRecords);
-    eventOn(getButtonEvent('清空用量记录'), clearRecords);
+  function init() {
+    injectStyle();
+    loadSettings();
     replaceScriptInfo(
       [
         '版本: 0.3.0',
@@ -515,12 +511,6 @@
         '设置: 可在「扩展设置 -> 缓存用量记录」中调整开关与缓存口径。',
       ].join('\n'),
     );
-  }
-
-  function init() {
-    injectStyle();
-    loadSettings();
-    registerScriptButtons();
 
     $('#cul_settings_panel').remove();
     $('#extensions_settings2').append(buildSettingsHtml());

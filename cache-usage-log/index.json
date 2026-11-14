@@ -6,17 +6,8 @@
   "content": "(async () => {\n  const owner = 'DoshideDK';\n  const repo = 'JS-Slash-Runner';\n  const branch = 'main';\n  const path = 'cache-usage-log/index.js';\n  const cdn = 'https://cdn.jsdelivr.net/gh';\n  let url = `${cdn}/${owner}/${repo}@${branch}/${path}`;\n\n  try {\n    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits/${branch}`, {\n      cache: 'no-store',\n      headers: { Accept: 'application/vnd.github+json' },\n    });\n    if (res.ok) {\n      const sha = (await res.json())?.sha;\n      if (sha) url = `${cdn}/${owner}/${repo}@${sha}/${path}`;\n    }\n  } catch (error) {\n    console.warn('[缓存用量记录] 获取最新提交失败，回退到分支地址', error);\n  }\n\n  await import(url);\n})();\n",
   "info": "版本: 0.3.0\n类型: 酒馆助手脚本\n功能: 记录每次生成返回的缓存与 Token 用量（支持 Claude / OpenAI 格式），常驻显示在消息旁。\n说明: 正文仅负责加载最新版本，实际代码从 CDN 拉取。",
   "button": {
-    "enabled": true,
-    "buttons": [
-      {
-        "name": "导出用量JSON",
-        "visible": true
-      },
-      {
-        "name": "清空用量记录",
-        "visible": true
-      }
-    ]
+    "enabled": false,
+    "buttons": []
   },
   "data": {},
   "export_with": {
