@@ -2,7 +2,7 @@
  * 引号格式 (Quote Format) for SillyTavern + 酒馆助手 (JS-Slash-Runner)
  *
  * 1. 不再把 « » 与 『 』 包裹的内容渲染为 <q> 引号高亮。
- * 2. 把魔棒菜单中的「重新生成」移到「继续」之后。
+ * 2. 把魔棒菜单中的「重新生成」固定在菜单最后。
  *
  * 原理：通过 SillyTavern.getContext().messageFormatter 注册格式化钩子：
  *   - afterRegex：把 « » 『 』 替换为私用区占位符，使内置引号正则匹配不到；
@@ -57,16 +57,25 @@
     }
   }
 
-  // 记录「重新生成」原位置，卸载时还原
+  // 「重新生成」始终保持在菜单末尾（其他插件后插入的按钮也不会排到它后面）；记录原位置，卸载时还原
   let $regenAnchor = null;
+  let menuObserver = null;
+  function keepRegenerateLast() {
+    const regen = $('#option_regenerate')[0];
+    const parent = regen?.parentElement;
+    if (parent && parent.lastElementChild !== regen) parent.appendChild(regen);
+  }
   function moveRegenerate() {
     const $regen = $('#option_regenerate');
-    const $continue = $('#option_continue');
-    if (!$regen.length || !$continue.length) return;
+    if (!$regen.length) return;
     $regenAnchor = $('<span id="quote_format_regen_anchor" hidden></span>').insertBefore($regen);
-    $regen.insertAfter($continue);
+    keepRegenerateLast();
+    menuObserver = new UI_WINDOW.MutationObserver(keepRegenerateLast);
+    menuObserver.observe($regen.parent()[0], { childList: true });
   }
   function restoreRegenerate() {
+    menuObserver?.disconnect();
+    menuObserver = null;
     if (!$regenAnchor) return;
     $('#option_regenerate').insertAfter($regenAnchor);
     $regenAnchor.remove();
